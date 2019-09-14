@@ -40,6 +40,7 @@ safe_name_samples = [
     CannotEval.__repr__,
     CannotEval().__repr__,
     ast,
+    CannotEval,
 ]
 
 for f in safe_name_samples:
@@ -50,8 +51,6 @@ safe_name_types = {
     for f in safe_name_samples
 }
 
-assert len(safe_name_samples) == 10
-assert len(safe_name_types) == 8
 
 for f in safe_name_types:
     try:
