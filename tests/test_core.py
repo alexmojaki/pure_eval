@@ -23,13 +23,16 @@ def check_eval(source, *expected_values, total=True):
         assert expected in values
 
 
-def test_eval():
+def test_eval_names():
     x = 3
     check_eval(
         "(x, check_eval, len), nonexistent",
         x, check_eval, len,
         # TODO tuple (x, check_eval, len),
     )
+
+
+def test_eval_literals():
     check_eval(
         "(1, 'a', [{}])",
         (1, 'a', [{}]),
@@ -37,6 +40,8 @@ def test_eval():
         {},
     )
 
+
+def test_eval_attrs():
     class Foo:
         bar = 9
 
@@ -58,4 +63,45 @@ def test_eval():
     check_eval(
         "Foo.spam + Foo.prop + foo.prop + foo.method() + Foo.method",
         foo, Foo
+    )
+
+
+def test_eval_dict():
+    d = {1: 2}
+
+    # All is well, d[1] is evaluated
+    check_eval(
+        "d[1]",
+        d[1], d, 1
+    )
+
+    class BadHash:
+        def __hash__(self):
+            return 0
+
+    d[BadHash()] = 3
+
+    # d[1] is evaluated because d contains a bad key
+    check_eval(
+        "d[1]",
+        d, 1
+    )
+
+    def make_d():
+        return {1: 2}
+
+    str(make_d())
+
+    # Cannot eval make_d()[1] because the left part cannot eval
+    check_eval(
+        "make_d()[1]",
+        make_d, 1
+    )
+
+    d = {1: 2}
+
+    # Cannot eval d[:1] because slices aren't hashable
+    check_eval(
+        "d[:1]",
+        d, 1
     )
