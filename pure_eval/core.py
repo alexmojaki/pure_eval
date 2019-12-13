@@ -67,6 +67,10 @@ class Evaluator:
                 if (
                         isinstance(index, ast.Index)
                         and safe_hash_key(self[index.value])
+
+                        # Have to ensure that the dict only contains keys that
+                        # can safely be compared via __eq__ to the index.
+                        # Don't bother for massive dicts to not kill performance
                         and len(value) < 10000
                         and all(map(safe_hash_key, value))
                 ):
