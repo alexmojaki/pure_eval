@@ -84,32 +84,44 @@ class Evaluator:
                 continue
 
             try:
-                ast.literal_eval(node)
-                continue
-            except ValueError:
-                pass
-
-            try:
                 value = self[node]
             except CannotEval:
                 continue
 
-            # TODO exclude inner modules, e.g. numpy.random.__name__ == 'numpy.random' != 'random'
-            # TODO exclude common module abbreviations, e.g. numpy as np, pandas as pd
-            if has_ast_name(value, node):
-                continue
-
-            if (
-                    isinstance(node, ast.Name)
-                    and getattr(builtins, node.id, object()) is value
-            ):
-                continue
-
             yield node, value
 
-    def find_expressions_grouped(self, root):
-        result = {}
-        for node, value in self.find_expressions(root):
-            dump = ast.dump(copy_ast_without_context(node))
-            result.setdefault(dump, ([], value))[0].append(node)
-        return result.values()
+    def interesting_expressions_grouped(self, root):
+        yield from group_expressions(
+            pair
+            for pair in self.find_expressions(root)
+            if is_expression_interesting(*pair)
+        )
+
+
+def is_expression_interesting(node, value):
+    try:
+        ast.literal_eval(node)
+        return False
+    except ValueError:
+        pass
+
+    # TODO exclude inner modules, e.g. numpy.random.__name__ == 'numpy.random' != 'random'
+    # TODO exclude common module abbreviations, e.g. numpy as np, pandas as pd
+    if has_ast_name(value, node):
+        return False
+
+    if (
+            isinstance(node, ast.Name)
+            and getattr(builtins, node.id, object()) is value
+    ):
+        return False
+
+    return True
+
+
+def group_expressions(expressions):
+    result = {}
+    for node, value in expressions:
+        dump = ast.dump(copy_ast_without_context(node))
+        result.setdefault(dump, ([], value))[0].append(node)
+    return result.values()
