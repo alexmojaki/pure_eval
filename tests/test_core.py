@@ -112,3 +112,19 @@ def test_eval_dict():
         "d[:1]",
         d, 1
     )
+
+
+def test_eval_sequence_subscript():
+    lst = [12, 34, 56]
+    i = 1
+    check_eval(
+        "lst[i] + lst[:i][0] + lst[i:][i] + lst[::2][False]",
+        lst[i], lst[:i][0], lst[i:][i], lst[::2],
+        lst, i, lst[:i], 0, lst[i:], 2,
+    )
+
+    check_eval(
+        "('abc', 'def')[1][2]",
+        ('abc', 'def')[1][2],
+        total=False
+    )

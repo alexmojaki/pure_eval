@@ -63,7 +63,7 @@ class Evaluator:
                     return value[of_type(self[index.value], int, bool)]
                 elif isinstance(index, ast.Slice):
                     return value[slice(*[
-                        of_type(self[p], int, type(None), bool)
+                        None if p is None else of_type(self[p], int, bool)
                         for p in [index.lower, index.upper, index.step]
                     ])]
             elif is_any(type(value), dict):
