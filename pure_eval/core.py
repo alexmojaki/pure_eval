@@ -23,10 +23,13 @@ class Evaluator:
         assert isinstance(node, ast.expr)
         try:
             result = self._cache[node]
-            if result is CannotEval:
-                raise CannotEval
         except KeyError:
             pass
+        else:
+            if result is CannotEval:
+                raise CannotEval
+            else:
+                return result
 
         try:
             self._cache[node] = result = self.handle(node)
@@ -91,7 +94,7 @@ class Evaluator:
             yield node, value
 
     def interesting_expressions_grouped(self, root):
-        yield from group_expressions(
+        return group_expressions(
             pair
             for pair in self.find_expressions(root)
             if is_expression_interesting(*pair)
