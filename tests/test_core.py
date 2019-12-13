@@ -81,10 +81,19 @@ def test_eval_dict():
 
     d[BadHash()] = 3
 
-    # d[1] is evaluated because d contains a bad key
+    # d[1] is not evaluated because d contains a bad key
     check_eval(
         "d[1]",
         d, 1
+    )
+
+    d = {1: 2}
+    b = BadHash()
+
+    # d[b] is not evaluated because b is a bad key
+    check_eval(
+        "d[b]",
+        d, b
     )
 
     def make_d():
@@ -97,8 +106,6 @@ def test_eval_dict():
         "make_d()[1]",
         make_d, 1
     )
-
-    d = {1: 2}
 
     # Cannot eval d[:1] because slices aren't hashable
     check_eval(
