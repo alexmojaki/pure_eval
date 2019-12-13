@@ -80,3 +80,18 @@ def ast_name(node):
 
 def has_ast_name(value, node):
     return has_safe_name(value) and eq_checking_types(value.__name__, ast_name(node))
+
+
+def copy_ast_without_context(x):
+    if isinstance(x, ast.AST):
+        kwargs = {
+            field: copy_ast_without_context(getattr(x, field))
+            for field in x._fields
+            if field != 'ctx'
+            if hasattr(x, field)
+        }
+        return type(x)(**kwargs)
+    elif isinstance(x, list):
+        return list(map(copy_ast_without_context, x))
+    else:
+        return x

@@ -3,7 +3,7 @@ import builtins
 from collections import ChainMap
 
 from pure_eval.my_getattr_static import getattr_static
-from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name
+from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
 
 
 class Evaluator:
@@ -79,7 +79,6 @@ class Evaluator:
         raise CannotEval
 
     def find_expressions(self, root):
-        result = []
         for node in ast.walk(root):
             if not isinstance(node, ast.expr):
                 continue
@@ -106,12 +105,11 @@ class Evaluator:
             ):
                 continue
 
-            result.append((node, value))
+            yield node, value
 
-        return result
-
-    def find_expressions_with_text(self, root, get_text):
+    def find_expressions_grouped(self, root):
         result = {}
         for node, value in self.find_expressions(root):
-            result.setdefault(get_text(node), ([], value))[0].append(node)
-        return result
+            dump = ast.dump(copy_ast_without_context(node))
+            result.setdefault(dump, ([], value))[0].append(node)
+        return result.values()
