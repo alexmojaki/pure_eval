@@ -2,6 +2,7 @@ import ast
 import inspect
 
 from pure_eval import Evaluator
+from pure_eval.core import is_expression_interesting
 
 
 def check_eval(source, *expected_values, total=True):
@@ -128,3 +129,28 @@ def test_eval_sequence_subscript():
         ('abc', 'def')[1][2],
         total=False
     )
+
+
+def check_interesting(source):
+    frame = inspect.currentframe().f_back
+    evaluator = Evaluator.from_frame(frame)
+    root = ast.parse(source)
+    node = root.body[0].value
+    value = evaluator[node]
+
+    expr = ast.Expression(body=node)
+    ast.copy_location(expr, node)
+    code = compile(expr, "<expr>", "eval")
+    expected = eval(code, frame.f_globals, frame.f_locals)
+    assert value == expected
+
+    return is_expression_interesting(node, value)
+
+
+def test_is_expression_interesting():
+    x = 1
+    assert check_interesting('x')
+    assert not check_interesting('help')
+    assert not check_interesting('check_interesting')
+    assert not check_interesting('[1]')
+    assert check_interesting('[1, 2][0]')
