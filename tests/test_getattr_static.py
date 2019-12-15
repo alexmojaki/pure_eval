@@ -2,8 +2,10 @@ import sys
 import unittest
 import types
 
+import pytest
+
 from pure_eval import CannotEval
-from pure_eval.my_getattr_static import getattr_static
+from pure_eval.my_getattr_static import getattr_static, safe_descriptors_raw
 
 
 class TestGetattrStatic(unittest.TestCase):
@@ -292,3 +294,10 @@ class TestGetattrStatic(unittest.TestCase):
 
         self.assert_cannot_getattr(Thing, "spam")
         self.assertFalse(Thing.executed)
+
+
+def test_safe_descriptors_immutable():
+    for d in safe_descriptors_raw:
+        for x in [d, type(d)]:
+            with pytest.raises((TypeError, AttributeError)):
+                x.__get__ = None

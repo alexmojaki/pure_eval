@@ -119,32 +119,17 @@ slot_descriptor = _foo.foo
 wrapper_descriptor = str.__dict__['__add__']
 method_descriptor = str.__dict__['startswith']
 
-safe_descriptors = [
+safe_descriptors_raw = [
     slot_descriptor,
     wrapper_descriptor,
     method_descriptor,
 ]
 
-for _d in safe_descriptors:
-    try:
-        _d.__get__ = None
-    except (TypeError, AttributeError):
-        pass
-    else:
-        raise ValueError(_d)
-
-    try:
-        type(_d).__get__ = None
-    except (TypeError, AttributeError):
-        pass
-    else:
-        raise ValueError(_d)
-
-safe_descriptors = list(map(type, safe_descriptors))
+safe_descriptor_types = list(map(type, safe_descriptors_raw))
 
 
 def _resolve_descriptor(d, instance, owner):
     try:
-        return of_type(d, *safe_descriptors).__get__(instance, owner)
+        return of_type(d, *safe_descriptor_types).__get__(instance, owner)
     except AttributeError as e:
         raise CannotEval from e
