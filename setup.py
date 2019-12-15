@@ -20,11 +20,11 @@ contents = file_to_string(package, '__init__.py')
 __version__ = re.search(r"__version__ = '([.\d]+)'", contents).group(1)
 
 install_requires = [
-    'asttokens',
 ]
 
 
 tests_require = [
+    'pytest'
 ]
 
 setup(
@@ -48,8 +48,8 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Topic :: Software Development :: Debuggers',
     ],
 )
