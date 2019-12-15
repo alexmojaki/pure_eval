@@ -2,7 +2,7 @@ import ast
 import inspect
 
 from pure_eval import Evaluator
-from pure_eval.core import is_expression_interesting
+from pure_eval.core import is_expression_interesting, group_expressions
 
 
 def check_eval(source, *expected_values, total=True):
@@ -149,8 +149,31 @@ def check_interesting(source):
 
 def test_is_expression_interesting():
     x = 1
+    str(x)
     assert check_interesting('x')
     assert not check_interesting('help')
     assert not check_interesting('check_interesting')
     assert not check_interesting('[1]')
     assert check_interesting('[1, 2][0]')
+
+
+def test_group_expressions():
+    x = (1, 2)
+    evaluator = Evaluator({'x': x})
+    tree = ast.parse('x[0] + x[x[0]]').body[0].value
+    expressions = evaluator.find_expressions(tree)
+    grouped = set(
+        (frozenset(nodes), value)
+        for nodes, value in
+        group_expressions(expressions)
+    )
+    assert grouped == {
+        (frozenset([tree.left, tree.right.slice.value]),
+         x[0]),
+        (frozenset([tree.left.value, tree.right.slice.value.value, tree.right.value]),
+         x),
+        (frozenset([tree.left.slice.value, tree.right.slice.value.slice.value]),
+         0),
+        (frozenset([tree.right]),
+         x[x[0]]),
+    }
