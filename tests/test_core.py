@@ -167,7 +167,7 @@ def test_group_expressions():
         for nodes, value in
         group_expressions(expressions)
     )
-    assert grouped == {
+    expected = {
         (frozenset([tree.left, tree.right.slice.value]),
          x[0]),
         (frozenset([tree.left.value, tree.right.slice.value.value, tree.right.value]),
@@ -177,3 +177,16 @@ def test_group_expressions():
         (frozenset([tree.right]),
          x[x[0]]),
     }
+    assert grouped == expected
+
+    grouped = set(
+        (frozenset(nodes), value)
+        for nodes, value in
+        evaluator.interesting_expressions_grouped(tree)
+    )
+    expected = set(
+        (nodes, value)
+        for nodes, value in expected
+        if value != 0
+    )
+    assert grouped == expected
