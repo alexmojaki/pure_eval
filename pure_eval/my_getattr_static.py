@@ -25,6 +25,8 @@ def _check_class(klass, attr):
                 return entry.__dict__[attr]
             except KeyError:
                 pass
+        else:
+            break
     return _sentinel
 
 
@@ -69,6 +71,8 @@ def getattr_static(obj, attr):
         if (dict_attr is _sentinel or
                 type(dict_attr) is types.MemberDescriptorType):
             instance_result = _check_instance(obj, attr)
+        else:
+            raise CannotEval
     else:
         klass = obj
 
@@ -77,7 +81,7 @@ def getattr_static(obj, attr):
     if instance_result is not _sentinel and klass_result is not _sentinel:
         if (_check_class(type(klass_result), '__get__') is not _sentinel and
                 _check_class(type(klass_result), '__set__') is not _sentinel):
-            return _resolve_descriptor(klass_result, obj)
+            return _resolve_descriptor(klass_result, obj, klass)
 
     if instance_result is not _sentinel:
         return instance_result
@@ -86,14 +90,22 @@ def getattr_static(obj, attr):
         if get is _sentinel:
             return klass_result
         else:
-            return _resolve_descriptor(klass_result, obj)
+            if obj is klass:
+                instance = None
+            else:
+                instance = obj
+            return _resolve_descriptor(klass_result, instance, klass)
 
     if obj is klass:
         # for types we check the metaclass too
         for entry in _static_getmro(type(klass)):
             if _shadowed_dict(type(entry)) is _sentinel:
                 try:
-                    return entry.__dict__[attr]
+                    result = entry.__dict__[attr]
+                    get = _check_class(type(result), '__get__')
+                    if get is not _sentinel:
+                        raise CannotEval
+                    return result
                 except KeyError:
                     pass
     raise CannotEval
@@ -103,15 +115,36 @@ class _foo:
     __slots__ = ['foo']
 
 
-slot_descriptor = type(_foo.foo)
-wrapper_descriptor = type(str.__dict__['__add__'])
-method_descriptor = type(str.__dict__['startswith'])
+slot_descriptor = _foo.foo
+wrapper_descriptor = str.__dict__['__add__']
+method_descriptor = str.__dict__['startswith']
+
+safe_descriptors = [
+    slot_descriptor,
+    wrapper_descriptor,
+    method_descriptor,
+]
+
+for _d in safe_descriptors:
+    try:
+        _d.__get__ = None
+    except (TypeError, AttributeError):
+        pass
+    else:
+        raise ValueError(_d)
+
+    try:
+        type(_d).__get__ = None
+    except (TypeError, AttributeError):
+        pass
+    else:
+        raise ValueError(_d)
+
+safe_descriptors = list(map(type, safe_descriptors))
 
 
-def _resolve_descriptor(d, obj):
-    return of_type(
-        d,
-        slot_descriptor,
-        wrapper_descriptor,
-        method_descriptor,
-    ).__get__(obj)
+def _resolve_descriptor(d, instance, owner):
+    try:
+        return of_type(d, *safe_descriptors).__get__(instance, owner)
+    except AttributeError as e:
+        raise CannotEval from e
