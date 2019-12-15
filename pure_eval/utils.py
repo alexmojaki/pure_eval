@@ -52,15 +52,6 @@ safe_name_types = {
 }
 
 
-for f in safe_name_types:
-    try:
-        f.__name__ = lambda: 0
-    except TypeError:
-        pass
-    else:
-        assert False
-
-
 def has_safe_name(x):
     return is_any(type(x), *safe_name_types)
 

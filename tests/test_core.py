@@ -63,7 +63,7 @@ def test_eval_attrs():
 
     check_eval(
         "Foo.spam + Foo.prop + foo.prop + foo.method() + Foo.method",
-        foo, Foo
+        foo, Foo, Foo.method, foo.method, 
     )
 
 
@@ -114,6 +114,15 @@ def test_eval_dict():
         d, 1
     )
 
+    d = {(1, 3): 2}
+    b = BadHash()
+
+    # d[(1, b)] is not evaluated because b is a bad key
+    check_eval(
+        "d[(1, b)], d[(1, 3)]",
+        d, b, d[(1, 3)], (1, 3), 1, 3
+    )
+
 
 def test_eval_sequence_subscript():
     lst = [12, 34, 56]
@@ -148,13 +157,27 @@ def check_interesting(source):
 
 
 def test_is_expression_interesting():
+    class Foo:
+        def method(self):
+            pass
+
+        alias = method
+
+    foo = Foo()
     x = 1
-    str(x)
+    foo.x = x
     assert check_interesting('x')
     assert not check_interesting('help')
     assert not check_interesting('check_interesting')
     assert not check_interesting('[1]')
     assert check_interesting('[1, 2][0]')
+    assert check_interesting('foo')
+    assert not check_interesting('Foo')
+    assert check_interesting('foo.x')
+    assert not check_interesting('foo.method')
+    assert check_interesting('foo.alias')
+    assert not check_interesting('Foo.method')
+    assert check_interesting('Foo.alias')
 
 
 def test_group_expressions():

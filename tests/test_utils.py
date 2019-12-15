@@ -4,7 +4,10 @@ import os
 import re
 import sys
 
-from pure_eval.utils import copy_ast_without_context
+import pytest
+
+from pure_eval import CannotEval
+from pure_eval.utils import copy_ast_without_context, safe_name_types
 import inspect
 
 
@@ -50,3 +53,13 @@ def check_copy_ast_without_context(tree):
         dump1
     )
     assert normalised_dump1 == dump2
+
+
+def test_repr_cannot_eval():
+    assert repr(CannotEval()) == "CannotEval"
+
+
+def test_safe_name_types():
+    for f in safe_name_types:
+        with pytest.raises(TypeError):
+            f.__name__ = lambda: 0

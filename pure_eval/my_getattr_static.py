@@ -113,16 +113,19 @@ def getattr_static(obj, attr):
 
 class _foo:
     __slots__ = ['foo']
+    method = lambda: 0
 
 
 slot_descriptor = _foo.foo
 wrapper_descriptor = str.__dict__['__add__']
 method_descriptor = str.__dict__['startswith']
+user_method_descriptor = _foo.__dict__['method']
 
 safe_descriptors_raw = [
     slot_descriptor,
     wrapper_descriptor,
     method_descriptor,
+    user_method_descriptor,
 ]
 
 safe_descriptor_types = list(map(type, safe_descriptors_raw))
@@ -130,6 +133,6 @@ safe_descriptor_types = list(map(type, safe_descriptors_raw))
 
 def _resolve_descriptor(d, instance, owner):
     try:
-        return of_type(d, *safe_descriptor_types).__get__(instance, owner)
+        return type(of_type(d, *safe_descriptor_types)).__get__(d, instance, owner)
     except AttributeError as e:
         raise CannotEval from e

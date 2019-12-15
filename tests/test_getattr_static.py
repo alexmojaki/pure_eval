@@ -298,6 +298,5 @@ class TestGetattrStatic(unittest.TestCase):
 
 def test_safe_descriptors_immutable():
     for d in safe_descriptors_raw:
-        for x in [d, type(d)]:
-            with pytest.raises((TypeError, AttributeError)):
-                x.__get__ = None
+        with pytest.raises((TypeError, AttributeError)):
+            type(d).__get__ = None
