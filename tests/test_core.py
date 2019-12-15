@@ -164,7 +164,7 @@ def test_is_expression_interesting():
         alias = method
 
     foo = Foo()
-    x = 1
+    x = [check_interesting]
     foo.x = x
     assert check_interesting('x')
     assert not check_interesting('help')
@@ -178,6 +178,7 @@ def test_is_expression_interesting():
     assert check_interesting('foo.alias')
     assert not check_interesting('Foo.method')
     assert check_interesting('Foo.alias')
+    assert check_interesting('x[0]')
 
 
 def test_group_expressions():
