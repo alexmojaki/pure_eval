@@ -3,6 +3,7 @@ import io
 import os
 import re
 import sys
+from itertools import islice
 
 import pytest
 
@@ -33,9 +34,9 @@ def sys_modules_sources():
 
 
 def test_sys_modules():
-    modules = list(sys_modules_sources())
+    modules = sys_modules_sources()
     if not os.environ.get('PURE_EVAL_SLOW_TESTS'):
-        modules = modules[:3]
+        modules = islice(modules, 0, 3)
 
     for filename, source, tree in modules:
         print(filename)
