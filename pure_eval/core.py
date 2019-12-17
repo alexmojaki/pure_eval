@@ -66,10 +66,10 @@ class Evaluator:
                         None if p is None else of_type(self[p], int, bool)
                         for p in [index.lower, index.upper, index.step]
                     ])]
-            elif is_any(type(value), dict):
+            elif is_any(type(value), dict) and isinstance(index, ast.Index):
+                key = self[index.value]
                 if (
-                        isinstance(index, ast.Index)
-                        and safe_hash_key(self[index.value])
+                        safe_hash_key(key)
 
                         # Have to ensure that the dict only contains keys that
                         # can safely be compared via __eq__ to the index.
@@ -77,7 +77,10 @@ class Evaluator:
                         and len(value) < 10000
                         and all(map(safe_hash_key, value))
                 ):
-                    return value[self[index.value]]
+                    try:
+                        return value[key]
+                    except KeyError:
+                        raise CannotEval
 
         raise CannotEval
 
