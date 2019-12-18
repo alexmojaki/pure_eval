@@ -1,6 +1,7 @@
 import ast
 import builtins
 from collections import ChainMap
+from contextlib import suppress
 
 from pure_eval.my_getattr_static import getattr_static
 from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
@@ -21,11 +22,8 @@ class Evaluator:
 
     def __getitem__(self, node):
         assert isinstance(node, ast.expr)
-        try:
+        with suppress(KeyError):
             result = self._cache[node]
-        except KeyError:
-            pass
-        else:
             if result is CannotEval:
                 raise CannotEval
             else:
@@ -39,10 +37,8 @@ class Evaluator:
             raise
 
     def handle(self, node):
-        try:
+        with suppress(ValueError):
             return ast.literal_eval(node)
-        except ValueError:
-            pass
 
         if isinstance(node, ast.Name):
             try:
@@ -60,7 +56,11 @@ class Evaluator:
             index = node.slice
             if is_any(type(value), list, tuple, str, bytes, bytearray):
                 if isinstance(index, ast.Index):
-                    return value[of_type(self[index.value], int, bool)]
+                    key = of_type(self[index.value], int, bool)
+                    try:
+                        return value[key]
+                    except IndexError:
+                        raise CannotEval
                 elif isinstance(index, ast.Slice):
                     return value[slice(*[
                         None if p is None else of_type(self[p], int, bool)
@@ -105,11 +105,9 @@ class Evaluator:
 
 
 def is_expression_interesting(node, value):
-    try:
+    with suppress(ValueError):
         ast.literal_eval(node)
         return False
-    except ValueError:
-        pass
 
     # TODO exclude inner modules, e.g. numpy.random.__name__ == 'numpy.random' != 'random'
     # TODO exclude common module abbreviations, e.g. numpy as np, pandas as pd

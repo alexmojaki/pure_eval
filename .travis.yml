@@ -26,3 +26,4 @@ after_success:
 
 notifications:
   webhooks: https://coveralls.io/webhook
+  email: false
