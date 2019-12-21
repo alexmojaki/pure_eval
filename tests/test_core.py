@@ -63,7 +63,7 @@ def test_eval_attrs():
 
     check_eval(
         "Foo.spam + Foo.prop + foo.prop + foo.method() + Foo.method",
-        foo, Foo, Foo.method, foo.method, 
+        foo, Foo, Foo.method, foo.method
     )
 
 

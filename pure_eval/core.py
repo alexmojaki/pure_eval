@@ -2,25 +2,27 @@ import ast
 import builtins
 from collections import ChainMap
 from contextlib import suppress
+from types import FrameType
+from typing import Any, Tuple, Iterable, List, Mapping, Dict
 
 from pure_eval.my_getattr_static import getattr_static
 from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
 
 
 class Evaluator:
-    def __init__(self, names):
+    def __init__(self, names: Mapping[str, Any]):
         self.names = names
-        self._cache = {}
+        self._cache: Dict[ast.expr, Any] = {}
 
     @classmethod
-    def from_frame(cls, frame):
+    def from_frame(cls, frame: FrameType) -> 'Evaluator':
         return cls(ChainMap(
             frame.f_locals,
             frame.f_globals,
             frame.f_builtins,
         ))
 
-    def __getitem__(self, node):
+    def __getitem__(self, node: ast.expr) -> Any:
         assert isinstance(node, ast.expr)
         with suppress(KeyError):
             result = self._cache[node]
@@ -30,13 +32,13 @@ class Evaluator:
                 return result
 
         try:
-            self._cache[node] = result = self.handle(node)
+            self._cache[node] = result = self._handle(node)
             return result
         except CannotEval:
             self._cache[node] = CannotEval
             raise
 
-    def handle(self, node):
+    def _handle(self, node: ast.expr) -> Any:
         with suppress(ValueError):
             return ast.literal_eval(node)
 
@@ -84,7 +86,7 @@ class Evaluator:
 
         raise CannotEval
 
-    def find_expressions(self, root):
+    def find_expressions(self, root: ast.AST) -> Iterable[Tuple[ast.expr, Any]]:
         for node in ast.walk(root):
             if not isinstance(node, ast.expr):
                 continue
@@ -96,7 +98,7 @@ class Evaluator:
 
             yield node, value
 
-    def interesting_expressions_grouped(self, root):
+    def interesting_expressions_grouped(self, root: ast.AST) -> List[Tuple[List[ast.expr], Any]]:
         return group_expressions(
             pair
             for pair in self.find_expressions(root)
@@ -104,7 +106,7 @@ class Evaluator:
         )
 
 
-def is_expression_interesting(node, value):
+def is_expression_interesting(node: ast.expr, value: Any) -> bool:
     with suppress(ValueError):
         ast.literal_eval(node)
         return False
@@ -123,9 +125,9 @@ def is_expression_interesting(node, value):
     return True
 
 
-def group_expressions(expressions):
+def group_expressions(expressions: Iterable[Tuple[ast.expr, Any]]) -> List[Tuple[List[ast.expr], Any]]:
     result = {}
     for node, value in expressions:
         dump = ast.dump(copy_ast_without_context(node))
         result.setdefault(dump, ([], value))[0].append(node)
-    return result.values()
+    return list(result.values())
