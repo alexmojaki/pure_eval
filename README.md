@@ -44,7 +44,7 @@ Attribute(value=Name(id='rect', ctx=Load()), attr='height', ctx=Load())
 Attribute(value=Name(id='rect', ctx=Load()), attr='area', ctx=Load())
 ```
 
-Now to actually use the library: first construct an Evaluator:
+Now to actually use the library. First construct an Evaluator:
 
 ```python
 from pure_eval import Evaluator
@@ -68,8 +68,8 @@ print("rect:", evaluator[the_tuple.elts[0].value])
 Output:
 
 ```
-3
-<__main__.Rectangle object at 0x1035f4d30>
+rect.width: 3
+rect: <__main__.Rectangle object at 0x105b0dd30>
 ```
 
 OK, but you could have done the same thing with `eval`. The useful part is that it will refuse to evaluate the property `rect.area` because that would trigger unknown code. If we try, it'll raise a `CannotEval` exception.
