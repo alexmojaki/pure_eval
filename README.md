@@ -4,7 +4,11 @@
 
 This is a Python package that lets you safely evaluate certain AST nodes without triggering arbitrary code that may have unwanted side effects.
 
-For example, suppose we have an object defined as follows:
+It can be installed from PyPI:
+
+    pip install pure_eval
+
+To demonstrate usage, suppose we have an object defined as follows:
 
 ```python
 class Rectangle:
