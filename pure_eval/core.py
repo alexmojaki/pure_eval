@@ -19,7 +19,7 @@ class Evaluator:
         """
 
         self.names = names
-        self._cache: Dict[ast.expr, Any] = {}
+        self._cache = {}  # type: Dict[ast.expr, Any]
 
     @classmethod
     def from_frame(cls, frame: FrameType) -> 'Evaluator':
