@@ -107,7 +107,8 @@ class Evaluator:
                         of_type(i, int, bool, type(None))
                 else:
                     of_type(index, int, bool)
-            elif is_any(type(value), dict):
+            else:
+                of_type(value, dict)
                 if not (
                         safe_hash_key(index)
 
@@ -118,8 +119,6 @@ class Evaluator:
                         and all(map(safe_hash_key, value))
                 ):
                     raise CannotEval
-            else:
-                raise CannotEval
 
             try:
                 return value[index]

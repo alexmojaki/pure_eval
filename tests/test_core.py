@@ -2,7 +2,9 @@ import ast
 import inspect
 import sys
 
-from pure_eval import Evaluator
+import pytest
+
+from pure_eval import Evaluator, CannotEval
 from pure_eval.core import is_expression_interesting, group_expressions
 
 
@@ -222,3 +224,23 @@ def subscript_item(node):
         return node.slice.value
     else:
         return node.slice
+
+
+def test_evaluator_wrong_getitem():
+    evaluator = Evaluator({})
+    with pytest.raises(TypeError, match="node should be an ast.expr, not 'str'"):
+        # noinspection PyTypeChecker
+        str(evaluator["foo"])
+
+
+@pytest.mark.parametrize("expr", ["[1][:,:]", "[1][9]"])
+def test_cannot_subscript(expr):
+    with pytest.raises(Exception):
+        eval(expr)
+
+    evaluator = Evaluator({})
+    tree = ast.parse(expr)
+    node = tree.body[0].value
+    assert isinstance(node, ast.Subscript)
+    with pytest.raises(CannotEval):
+        str(evaluator[node])
