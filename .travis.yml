@@ -15,7 +15,7 @@ env:
     - COVERALLS_PARALLEL=true
 
 before_install:
-  - pip install --upgrade coveralls setuptools>=44 setuptools_scm>=3.4.3 pep517
+  - pip install --upgrade coveralls setuptools setuptools_scm pep517
 
 install:
   - pip install ".[tests]"
