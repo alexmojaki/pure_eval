@@ -45,7 +45,9 @@ class Evaluator:
         :return: the value of the node
         """
 
-        assert isinstance(node, ast.expr)
+        if not isinstance(node, ast.expr):
+            raise TypeError("node should be an ast.expr, not {!r}".format(type(node).__name__))
+
         with suppress(KeyError):
             result = self._cache[node]
             if result is CannotEval:
