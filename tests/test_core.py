@@ -1,5 +1,6 @@
 import ast
 import inspect
+import sys
 
 from pure_eval import Evaluator
 from pure_eval.core import is_expression_interesting, group_expressions
@@ -192,11 +193,11 @@ def test_group_expressions():
         group_expressions(expressions)
     )
     expected = {
-        (frozenset([tree.left, tree.right.slice.value]),
+        (frozenset([tree.left, subscript_item(tree.right)]),
          x[0]),
-        (frozenset([tree.left.value, tree.right.slice.value.value, tree.right.value]),
+        (frozenset([tree.left.value, subscript_item(tree.right).value, tree.right.value]),
          x),
-        (frozenset([tree.left.slice.value, tree.right.slice.value.slice.value]),
+        (frozenset([subscript_item(tree.left), subscript_item(subscript_item(tree.right))]),
          0),
         (frozenset([tree.right]),
          x[x[0]]),
@@ -214,3 +215,10 @@ def test_group_expressions():
         if value != 0
     )
     assert grouped == expected
+
+
+def subscript_item(node):
+    if sys.version_info < (3, 9):
+        return node.slice.value
+    else:
+        return node.slice
