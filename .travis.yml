@@ -14,12 +14,14 @@ env:
     - PURE_EVAL_SLOW_TESTS=1
     - COVERALLS_PARALLEL=true
 
+before_install:
+  - pip install --upgrade coveralls setuptools>=44 setuptools_scm>=3.4.3 pep517
+
 install:
-  - pip install coveralls
-  - pip install .[tests]
+  - pip install ".[tests]"
 
 script:
-  - coverage run --include='pure_eval/*' -m pytest
+  - coverage run --branch --include='pure_eval/*' -m pytest --junitxml=./rspec.xml
   - coverage report -m
 
 after_success:
