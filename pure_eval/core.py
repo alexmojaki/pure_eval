@@ -72,7 +72,7 @@ class Evaluator:
         :return: the value of the node
         """
 
-        with suppress(ValueError):
+        with suppress(Exception):
             return ast.literal_eval(node)
 
         if isinstance(node, ast.Name):
