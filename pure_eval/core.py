@@ -125,6 +125,26 @@ class Evaluator:
             except (KeyError, IndexError):
                 raise CannotEval
 
+        if isinstance(node, ast.List):
+            return [self[elt] for elt in node.elts]
+
+        if isinstance(node, ast.Tuple):
+            return tuple(self[elt] for elt in node.elts)
+
+        if isinstance(node, ast.Set):
+            if not all(safe_hash_key(self[elt]) for elt in node.elts):
+                raise CannotEval
+            return set(self[elt] for elt in node.elts)
+
+        if isinstance(node, ast.Dict):
+            if not all(safe_hash_key(self[key]) for key in node.keys):
+                raise CannotEval
+
+            return {
+                self[key]: self[val]
+                for key, val in zip(node.keys, node.values)
+            }
+
         raise CannotEval
 
     def find_expressions(self, root: ast.AST) -> Iterable[Tuple[ast.expr, Any]]:

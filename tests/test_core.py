@@ -31,8 +31,8 @@ def test_eval_names():
     x = 3
     check_eval(
         "(x, check_eval, len), nonexistent",
-        x, check_eval, len,
-        # TODO tuple (x, check_eval, len),
+        x, check_eval, len, (x, check_eval, len)
+        # Now tuple is recognized
     )
 
 
@@ -123,9 +123,23 @@ def test_eval_dict():
     # d[(1, b)] is not evaluated because b is a bad key
     check_eval(
         "d[(1, b)], d[(1, 3)]",
-        d, b, d[(1, 3)], (1, 3), 1, 3
+        # (1, b) is a bad key, but it's a valid tuple element
+        d, b, d[(1, 3)], (1, 3), 1, 3, (1, b)
     )
 
+    e = 3
+    check_eval(
+        "{(1, e): 2}, {(1, b): 1}", # b is a bad key
+        b, 1, (1, e), 2, e, {(1, e): 2}, (1, b)
+    )
+
+def test_eval_set():
+    a = 1
+    b = {2, 3}  # unhashable itself
+    check_eval(
+        "{a}, b, {a, b, 4}, {b}", # d is a bad key
+        a, {a}, b, 4
+    )
 
 def test_eval_sequence_subscript():
     lst = [12, 34, 56]
@@ -142,6 +156,15 @@ def test_eval_sequence_subscript():
         total=False
     )
 
+    check_eval(
+        "[lst][0][2]",
+        lst, [lst], [lst][0], [lst][0][2], 2, 0
+    )
+
+    check_eval(
+        "(lst, )[0][2]",
+        lst, (lst, ), (lst, )[0], (lst, )[0][2], 2, 0
+    )
 
 def check_interesting(source):
     frame = inspect.currentframe().f_back
