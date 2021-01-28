@@ -32,7 +32,6 @@ def test_eval_names():
     check_eval(
         "(x, check_eval, len), nonexistent",
         x, check_eval, len, (x, check_eval, len)
-        # Now tuple is recognized
     )
 
 
