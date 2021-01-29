@@ -3,7 +3,7 @@ import builtins
 from collections import ChainMap
 from contextlib import suppress
 from types import FrameType
-from typing import Any, Tuple, Iterable, List, Mapping, Dict
+from typing import Any, Tuple, Iterable, List, Mapping, Dict, Union, Set
 
 from pure_eval.my_getattr_static import getattr_static
 from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
@@ -125,7 +125,38 @@ class Evaluator:
             except (KeyError, IndexError):
                 raise CannotEval
 
+
+        if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
+            return self._handle_container(node)
+
         raise CannotEval
+
+    def _handle_container(
+            self,
+            node: Union[ast.List, ast.Tuple, ast.Set, ast.Dict]
+    ) -> Union[List, Tuple, Set, Dict]:
+        """Handle container nodes, including List, Set, Tuple and Dict"""
+        elts = [
+            self[elt] for elt in (
+                node.keys if isinstance(node, ast.Dict) else node.elts
+            )
+        ]
+        if isinstance(node, ast.List):
+            return elts
+        if isinstance(node, ast.Tuple):
+            return tuple(elts)
+
+        # Set and Dict
+        if not all(map(safe_hash_key, elts)):
+            raise CannotEval
+
+        if isinstance(node, ast.Set):
+            return set(elts)
+
+        return {
+            elt: self[val]
+            for elt, val in zip(elts, node.values)
+        }
 
     def find_expressions(self, root: ast.AST) -> Iterable[Tuple[ast.expr, Any]]:
         """
