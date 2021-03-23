@@ -93,8 +93,39 @@ class Evaluator:
             return self._handle_unary(node)
         elif isinstance(node, ast.BinOp):
             return self._handle_binop(node)
+        elif isinstance(node, ast.BoolOp):
+            return self._handle_boolop(node)
 
         raise CannotEval
+
+    def _handle_boolop(self, node):
+        if len(node.values) > 2:
+            raise CannotEval  # TODO
+
+        allowed_types = (
+            int,
+            float,
+            complex,
+            bool,
+            str,
+            bytes,
+            range,
+            list,
+            tuple,
+            dict,
+            set,
+            frozenset,
+            type(None),
+        )
+        left = of_type(self[node.values[0]], *allowed_types)
+
+        # We need short circuiting so that the whole operation can be evaluated
+        # even if the right operand can't
+        if isinstance(node.op, ast.Or):
+            return left or of_type(self[node.values[1]], *allowed_types)
+        else:
+            assert isinstance(node.op, ast.And)
+            return left and of_type(self[node.values[1]], *allowed_types)
 
     def _handle_binop(self, node):
         op_type = type(node.op)
@@ -145,6 +176,7 @@ class Evaluator:
             frozenset,
             bytes,
             range,
+            type(None),
         )
         op_type = type(node.op)
         op = {

@@ -280,6 +280,17 @@ def test_is_expression_interesting():
     assert check_interesting('x[0]')
     assert not check_interesting('typing.List')
     assert check_interesting('[typing.List][0]')
+    assert check_interesting('True and False')
+    assert check_interesting('True and True')
+    assert check_interesting('False and True')
+    assert check_interesting('False and False')
+    assert check_interesting('True or False')
+    assert check_interesting('True or True')
+    assert check_interesting('False or True')
+    assert check_interesting('False or False')
+
+    with pytest.raises(CannotEval):
+        check_interesting('False or False or False')
 
 
 def test_group_expressions():
