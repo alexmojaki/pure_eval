@@ -1,5 +1,6 @@
 import ast
 import builtins
+import operator
 from collections import ChainMap
 from contextlib import suppress
 from types import FrameType
@@ -88,8 +89,27 @@ class Evaluator:
             return self._handle_subscript(node)
         elif isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
             return self._handle_container(node)
+        elif isinstance(node, ast.UnaryOp):
+            return self._handle_unary(node)
 
         raise CannotEval
+
+    def _handle_unary(self, node: ast.UnaryOp):
+        op_type = type(node.op)
+        allowed_types = (int, float, complex, bool)
+        if op_type is ast.Not:
+            allowed_types += (str, list, dict, set, frozenset, bytes, range)
+        value = of_type(self[node.operand], *allowed_types)
+        op = {
+            ast.USub: operator.neg,
+            ast.UAdd: operator.pos,
+            ast.Not: operator.not_,
+            ast.Invert: operator.invert,
+        }[op_type]
+        try:
+            return op(value)
+        except Exception as e:
+            raise CannotEval from e
 
     def _handle_subscript(self, node):
         value = self[node.value]

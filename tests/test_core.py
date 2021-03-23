@@ -170,6 +170,24 @@ def test_eval_sequence_subscript():
     )
 
 
+def test_eval_unary_op():
+    a = 123
+    check_eval(
+        "a, -a, +a, ~a",
+        a, -a, +a, ~a,
+        (a, -a, +a, ~a),
+    )
+    check_eval(
+        "not a",
+        a, not a,
+    )
+    b = ""
+    check_eval(
+        "not b, -b",
+        b, not b,
+    )
+
+
 def check_interesting(source):
     frame = inspect.currentframe().f_back
     evaluator = Evaluator.from_frame(frame)
