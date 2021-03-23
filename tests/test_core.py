@@ -234,8 +234,8 @@ def test_eval_binary_op():
          'a %s c', b,
     )
     check_eval(
-        "'a %s c' % check_eval",
-         'a %s c', check_eval,
+        "'a %s c' % [], a @ b, a + []",
+         'a %s c', [], a, b,
     )
 
 
