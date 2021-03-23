@@ -80,56 +80,55 @@ class Evaluator:
                 return self.names[node.id]
             except KeyError:
                 raise CannotEval
-
-        if isinstance(node, ast.Attribute):
+        elif isinstance(node, ast.Attribute):
             value = self[node.value]
             attr = node.attr
             return getattr_static(value, attr)
-
-        if isinstance(node, ast.Subscript):
-            value = self[node.value]
-            index = node.slice
-            if isinstance(index, ast.Slice):
-                index = slice(*[
-                    None if p is None else of_type(self[p], int, bool)
-                    for p in [index.lower, index.upper, index.step]
-                ])
-            elif isinstance(index, ast.ExtSlice):
-                raise CannotEval
-            else:
-                if isinstance(index, ast.Index):
-                    index = index.value
-                index = self[index]
-
-            if is_any(type(value), list, tuple, str, bytes, bytearray):
-                if isinstance(index, slice):
-                    for i in [index.start, index.stop, index.step]:
-                        of_type(i, int, bool, type(None))
-                else:
-                    of_type(index, int, bool)
-            else:
-                of_type(value, dict)
-                if not (
-                        safe_hash_key(index)
-
-                        # Have to ensure that the dict only contains keys that
-                        # can safely be compared via __eq__ to the index.
-                        # Don't bother for massive dicts to not kill performance
-                        and len(value) < 10000
-                        and all(map(safe_hash_key, value))
-                ):
-                    raise CannotEval
-
-            try:
-                return value[index]
-            except (KeyError, IndexError):
-                raise CannotEval
-
-
-        if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
+        elif isinstance(node, ast.Subscript):
+            return self._handle_subscript(node)
+        elif isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
             return self._handle_container(node)
 
         raise CannotEval
+
+    def _handle_subscript(self, node):
+        value = self[node.value]
+        index = node.slice
+        if isinstance(index, ast.Slice):
+            index = slice(*[
+                None if p is None else of_type(self[p], int, bool)
+                for p in [index.lower, index.upper, index.step]
+            ])
+        elif isinstance(index, ast.ExtSlice):
+            raise CannotEval
+        else:
+            if isinstance(index, ast.Index):
+                index = index.value
+            index = self[index]
+
+        if is_any(type(value), list, tuple, str, bytes, bytearray):
+            if isinstance(index, slice):
+                for i in [index.start, index.stop, index.step]:
+                    of_type(i, int, bool, type(None))
+            else:
+                of_type(index, int, bool)
+        else:
+            of_type(value, dict)
+            if not (
+                    safe_hash_key(index)
+
+                    # Have to ensure that the dict only contains keys that
+                    # can safely be compared via __eq__ to the index.
+                    # Don't bother for massive dicts to not kill performance
+                    and len(value) < 10000
+                    and all(map(safe_hash_key, value))
+            ):
+                raise CannotEval
+
+        try:
+            return value[index]
+        except (KeyError, IndexError):
+            raise CannotEval
 
     def _handle_container(
             self,
