@@ -60,7 +60,10 @@ def test_eval_attrs():
 
     check_eval(
         "foo.bar + foo.spam + Foo.bar",
-        foo.bar, foo.spam, Foo.bar, foo, Foo
+        foo.bar, foo.spam, Foo.bar,
+        foo.bar + foo.spam,
+        foo.bar + foo.spam + Foo.bar,
+        foo, Foo
     )
 
     check_eval(
@@ -150,6 +153,9 @@ def test_eval_sequence_subscript():
     check_eval(
         "lst[i] + lst[:i][0] + lst[i:][i] + lst[::2][False]",
         lst[i], lst[:i][0], lst[i:][i], lst[::2],
+        lst[i] + lst[:i][0],
+        lst[i] + lst[:i][0] + lst[i:][i],
+        lst[i] + lst[:i][0] + lst[i:][i] + lst[::2][False],
         lst, i, lst[:i], 0, lst[i:], 2,
     )
 
@@ -185,6 +191,51 @@ def test_eval_unary_op():
     check_eval(
         "not b, -b",
         b, not b,
+    )
+
+
+def test_eval_binary_op():
+    a = 123
+    b = 456
+    check_eval(
+        "a + b - a * b - (a ** b) // (b % a)",
+         a + b - a * b - (a ** b) // (b % a),
+         a + b, a * b, (a ** b), (b % a),
+         a + b - a * b, (a ** b) // (b % a),
+         a, b,
+    )
+    check_eval(
+        "a / b",
+         a / b, a, b,
+    )
+    check_eval(
+        "a & b",
+         a & b, a, b,
+    )
+    check_eval(
+        "a | b",
+         a | b, a, b,
+    )
+    check_eval(
+        "a ^ b",
+         a ^ b, a, b,
+    )
+    check_eval(
+        "a << 2",
+         a << 2, a, 2
+    )
+    check_eval(
+        "a >> 2",
+         a >> 2, a, 2
+    )
+    check_eval(
+        "'a %s c' % b",
+         'a %s c' % b,
+         'a %s c', b,
+    )
+    check_eval(
+        "'a %s c' % check_eval",
+         'a %s c', check_eval,
     )
 
 
@@ -250,6 +301,8 @@ def test_group_expressions():
          0),
         (frozenset([tree.right]),
          x[x[0]]),
+        (frozenset([tree]),
+         x[0] + x[x[0]]),
     }
     assert grouped == expected
 

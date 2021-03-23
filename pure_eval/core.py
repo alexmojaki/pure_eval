@@ -91,15 +91,62 @@ class Evaluator:
             return self._handle_container(node)
         elif isinstance(node, ast.UnaryOp):
             return self._handle_unary(node)
+        elif isinstance(node, ast.BinOp):
+            return self._handle_binop(node)
 
         raise CannotEval
 
-    def _handle_unary(self, node: ast.UnaryOp):
+    def _handle_binop(self, node):
         op_type = type(node.op)
-        allowed_types = (int, float, complex, bool)
-        if op_type is ast.Not:
-            allowed_types += (str, list, dict, set, frozenset, bytes, range)
-        value = of_type(self[node.operand], *allowed_types)
+        op = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+            ast.LShift: operator.lshift,
+            ast.RShift: operator.rshift,
+            ast.BitOr: operator.or_,
+            ast.BitXor: operator.xor,
+            ast.BitAnd: operator.and_,
+        }.get(op_type)
+        if not op:
+            raise CannotEval
+        # TODO allow dict, set, frozenset, checking for safe hash and ==
+        allowed_types = (int, float, complex, bool, str, bytes, range, list, tuple)
+        left = of_type(self[node.left], *allowed_types)
+        right = of_type(self[node.right], *allowed_types)
+        if (
+            type(left) in (str, bytes)
+            and op_type == ast.Mod
+            # TODO allow collections containing other types safe to format
+            and type(right) not in (int, float, complex, bool, str, bytes, range)
+        ):
+            raise CannotEval
+        try:
+            return op(left, right)
+        except Exception as e:
+            raise CannotEval from e
+
+    def _handle_unary(self, node: ast.UnaryOp):
+        value = of_type(
+            self[node.operand],
+            int,
+            float,
+            complex,
+            bool,
+            str,
+            list,
+            dict,
+            set,
+            tuple,
+            frozenset,
+            bytes,
+            range,
+        )
+        op_type = type(node.op)
         op = {
             ast.USub: operator.neg,
             ast.UAdd: operator.pos,
