@@ -6,9 +6,11 @@ import sys
 from itertools import islice
 
 import pytest
+import typing
 
 from pure_eval import CannotEval
-from pure_eval.utils import copy_ast_without_context, safe_name_types
+from pure_eval.utils import copy_ast_without_context, safe_name_types, safe_name_samples, eq_checking_types, safe_name, \
+    typing_annotation_samples
 import inspect
 
 
@@ -64,3 +66,16 @@ def test_safe_name_types():
     for f in safe_name_types:
         with pytest.raises(TypeError):
             f.__name__ = lambda: 0
+
+
+def test_safe_name_samples():
+    for name, f in {**safe_name_samples, **typing_annotation_samples}.items():
+        assert name == safe_name(f)
+
+
+def test_safe_name_direct():
+    assert safe_name(list) == "list"
+    assert safe_name(typing.List) == "List"
+    assert safe_name(typing.Union) == "Union"
+    assert safe_name(typing.Optional) == "Optional"
+    assert safe_name(3) is None

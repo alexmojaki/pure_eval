@@ -1,7 +1,7 @@
 import ast
 import inspect
 import sys
-
+import typing
 import pytest
 
 from pure_eval import Evaluator, CannotEval
@@ -68,6 +68,8 @@ def test_eval_attrs():
         foo, Foo, Foo.method, foo.method
     )
 
+    check_eval("typing.List", typing, typing.List)
+
 
 def test_eval_dict():
     d = {1: 2}
@@ -128,17 +130,19 @@ def test_eval_dict():
 
     e = 3
     check_eval(
-        "{(1, e): 2}, {(1, b): 1}", # b is a bad key
+        "{(1, e): 2}, {(1, b): 1}",  # b is a bad key
         b, 1, (1, e), 2, e, {(1, e): 2}, (1, b)
     )
+
 
 def test_eval_set():
     a = 1
     b = {2, 3}  # unhashable itself
     check_eval(
-        "{a}, b, {a, b, 4}, {b}", # d is a bad key
+        "{a}, b, {a, b, 4}, {b}",  # d is a bad key
         a, {a}, b, 4
     )
+
 
 def test_eval_sequence_subscript():
     lst = [12, 34, 56]
@@ -164,6 +168,7 @@ def test_eval_sequence_subscript():
         "(lst, )[0][2]",
         lst, (lst, ), (lst, )[0], (lst, )[0][2], 2, 0
     )
+
 
 def check_interesting(source):
     frame = inspect.currentframe().f_back
@@ -204,6 +209,8 @@ def test_is_expression_interesting():
     assert not check_interesting('Foo.method')
     assert check_interesting('Foo.alias')
     assert check_interesting('x[0]')
+    assert not check_interesting('typing.List')
+    assert check_interesting('[typing.List][0]')
 
 
 def test_group_expressions():
