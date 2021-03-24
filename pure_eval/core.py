@@ -108,12 +108,11 @@ class Evaluator:
         raise CannotEval
 
     def _handle_compare(self, node):
-        # TODO allow is/is not for any types
-        left = of_standard_types(self[node.left], check_dict_values=False, deep=True)
+        left = self[node.left]
         result = True
 
         for op, right in zip(node.ops, node.comparators):
-            right = of_standard_types(self[right], check_dict_values=False, deep=True)
+            right = self[right]
 
             op_type = type(op)
             op_func = {
@@ -128,6 +127,10 @@ class Evaluator:
                 ast.In: (lambda a, b: a in b),
                 ast.NotIn: (lambda a, b: a not in b),
             }[op_type]
+
+            if op_type not in (ast.Is, ast.IsNot):
+                of_standard_types(left, check_dict_values=False, deep=True)
+                of_standard_types(right, check_dict_values=False, deep=True)
 
             try:
                 result = op_func(left, right)

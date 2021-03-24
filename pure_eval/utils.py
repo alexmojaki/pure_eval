@@ -51,7 +51,6 @@ def _is_standard_types_deep(x, check_dict_values: bool, deep: bool):
         bool,
         float,
         bytes,
-        type,
         complex,
         date,
         time,

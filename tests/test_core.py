@@ -301,20 +301,35 @@ def test_is_expression_interesting():
 
 
 def test_boolop():
-    a = 0
-    b = 123
-    c = 234
-    str((a, b, c))
-    for length in [2, 3, 4]:
-        for vals in itertools.product(["1/0", "a", "b", "c"], repeat=length):
-            for op in [
-                "not in",
-                "is not",
-                *"+ - / // * & ^ % @ | >> or and < <= > >= == != in is".split()
-            ]:
-                op = " %s " % op
-                source = op.join(vals)
-                check_interesting(source)
+    for a, b, c in [
+        [0, 123, 456],
+        [0, [0], [[0]]],
+        [set(), {1}, {1, (1,)}],
+    ]:
+        str((a, b, c))
+        for length in [2, 3, 4]:
+            for vals in itertools.product(["1/0", "a", "b", "c"], repeat=length):
+                for op in [
+                    "not in",
+                    "is not",
+                    *"+ - / // * & ^ % @ | >> or and < <= > >= == != in is".split(),
+                ]:
+                    op = " %s " % op
+                    source = op.join(vals)
+                    check_interesting(source)
+
+
+def test_is():
+    for a, b, c in [
+        [check_interesting, CannotEval(), CannotEval],
+    ]:
+        str((a, b, c))
+        for length in [2, 3, 4]:
+            for vals in itertools.product(["1/0", "a", "b", "c"], repeat=length):
+                for op in ["is", "is not"]:
+                    op = " %s " % op
+                    source = op.join(vals)
+                    check_interesting(source)
 
 
 def test_group_expressions():
