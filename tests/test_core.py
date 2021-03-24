@@ -299,9 +299,27 @@ def test_is_expression_interesting():
 
 
 def test_boolop():
+    a = 0
+    b = 1
+    c = 2
+    str((a, b, c))
     for length in [2, 3, 4]:
-        for vals in itertools.product(["True", "False", "1/0"], repeat=length):
-            for op in [" or ", " and "]:
+        for vals in itertools.product(["1/0", "a", "b", "c"], repeat=length):
+            for op in [
+                "or",
+                "and",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "==",
+                "!=",
+                "in",
+                "not in",
+                "is",
+                "is not",
+            ]:
+                op = " %s " % op
                 source = op.join(vals)
                 check_interesting(source)
 

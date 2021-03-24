@@ -3,6 +3,9 @@ import builtins
 import operator
 from collections import ChainMap
 from contextlib import suppress
+from datetime import date, time, datetime
+from decimal import Decimal
+from fractions import Fraction
 from types import FrameType
 from typing import Any, Tuple, Iterable, List, Mapping, Dict, Union, Set
 
@@ -95,8 +98,56 @@ class Evaluator:
             return self._handle_binop(node)
         elif isinstance(node, ast.BoolOp):
             return self._handle_boolop(node)
+        elif isinstance(node, ast.Compare):
+            return self._handle_compare(node)
 
         raise CannotEval
+
+    def _handle_compare(self, node):
+        # TODO allow list, tuple, set, frozenset if contents are safe
+        allowed_types = (
+            int,
+            float,
+            complex,
+            bool,
+            str,
+            bytes,
+            date,
+            time,
+            datetime,
+            Fraction,
+            Decimal,
+        )
+        # TODO allow is/is not for any types
+        left = of_type(self[node.left], *allowed_types)
+        result = True
+
+        for op, right in zip(node.ops, node.comparators):
+            right = of_type(self[right], *allowed_types)
+
+            op_type = type(op)
+            op_func = {
+                ast.Eq: operator.eq,
+                ast.NotEq: operator.ne,
+                ast.Lt: operator.lt,
+                ast.LtE: operator.le,
+                ast.Gt: operator.gt,
+                ast.GtE: operator.ge,
+                ast.Is: operator.is_,
+                ast.IsNot: operator.is_not,
+                ast.In: (lambda a, b: a in b),
+                ast.NotIn: (lambda a, b: a not in b),
+            }[op_type]
+
+            try:
+                result = op_func(left, right)
+            except Exception as e:
+                raise CannotEval from e
+            if not result:
+                return result
+            left = right
+
+        return result
 
     def _handle_boolop(self, node):
         allowed_types = (
@@ -113,6 +164,11 @@ class Evaluator:
             set,
             frozenset,
             type(None),
+            date,
+            time,
+            datetime,
+            Fraction,
+            Decimal,
         )
         left = of_type(self[node.values[0]], *allowed_types)
 
@@ -145,14 +201,29 @@ class Evaluator:
         if not op:
             raise CannotEval
         # TODO allow dict, set, frozenset, checking for safe hash and ==
-        allowed_types = (int, float, complex, bool, str, bytes, range, list, tuple)
+        allowed_types = (
+            int,
+            float,
+            complex,
+            bool,
+            str,
+            bytes,
+            range,
+            list,
+            tuple,
+            date,
+            time,
+            datetime,
+            Fraction,
+            Decimal,
+        )
         left = of_type(self[node.left], *allowed_types)
         right = of_type(self[node.right], *allowed_types)
         if (
             type(left) in (str, bytes)
             and op_type == ast.Mod
             # TODO allow collections containing other types safe to format
-            and type(right) not in (int, float, complex, bool, str, bytes, range)
+            and type(right) in (list, tuple)
         ):
             raise CannotEval
         try:
@@ -176,6 +247,11 @@ class Evaluator:
             bytes,
             range,
             type(None),
+            date,
+            time,
+            datetime,
+            Fraction,
+            Decimal,
         )
         op_type = type(node.op)
         op = {
