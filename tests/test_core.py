@@ -246,13 +246,27 @@ def check_interesting(source):
     evaluator = Evaluator.from_frame(frame)
     root = ast.parse(source)
     node = root.body[0].value
-    value = evaluator[node]
+    cannot = value = None
+    try:
+        value = evaluator[node]
+    except CannotEval as e:
+        cannot = e
 
     expr = ast.Expression(body=node)
     ast.copy_location(expr, node)
     code = compile(expr, "<expr>", "eval")
-    expected = eval(code, frame.f_globals, frame.f_locals)
-    assert value == expected
+    try:
+        expected = eval(code, frame.f_globals, frame.f_locals)
+    except Exception:
+        if cannot:
+            return None
+        else:
+            raise
+    else:
+        if cannot:
+            raise cannot
+        else:
+            assert value == expected
 
     return is_expression_interesting(node, value)
 
@@ -283,12 +297,13 @@ def test_is_expression_interesting():
     assert not check_interesting('typing.List')
     assert check_interesting('[typing.List][0]')
 
+
+def test_boolop():
     for length in [2, 3, 4]:
-        for vals in itertools.product(["True", "False"], repeat=length):
+        for vals in itertools.product(["True", "False", "1/0"], repeat=length):
             for op in [" or ", " and "]:
                 source = op.join(vals)
-                print(source)
-                assert check_interesting(source)
+                check_interesting(source)
 
 
 def test_group_expressions():
