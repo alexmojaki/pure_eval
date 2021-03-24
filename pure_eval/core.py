@@ -99,9 +99,6 @@ class Evaluator:
         raise CannotEval
 
     def _handle_boolop(self, node):
-        if len(node.values) > 2:
-            raise CannotEval  # TODO
-
         allowed_types = (
             int,
             float,
@@ -119,13 +116,15 @@ class Evaluator:
         )
         left = of_type(self[node.values[0]], *allowed_types)
 
-        # We need short circuiting so that the whole operation can be evaluated
-        # even if the right operand can't
-        if isinstance(node.op, ast.Or):
-            return left or of_type(self[node.values[1]], *allowed_types)
-        else:
-            assert isinstance(node.op, ast.And)
-            return left and of_type(self[node.values[1]], *allowed_types)
+        for right in node.values[1:]:
+            # We need short circuiting so that the whole operation can be evaluated
+            # even if the right operand can't
+            if isinstance(node.op, ast.Or):
+                left = left or of_type(self[right], *allowed_types)
+            else:
+                assert isinstance(node.op, ast.And)
+                left = left and of_type(self[right], *allowed_types)
+        return left
 
     def _handle_binop(self, node):
         op_type = type(node.op)

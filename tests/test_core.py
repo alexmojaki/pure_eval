@@ -2,6 +2,8 @@ import ast
 import inspect
 import sys
 import typing
+
+import itertools
 import pytest
 
 from pure_eval import Evaluator, CannotEval
@@ -280,17 +282,13 @@ def test_is_expression_interesting():
     assert check_interesting('x[0]')
     assert not check_interesting('typing.List')
     assert check_interesting('[typing.List][0]')
-    assert check_interesting('True and False')
-    assert check_interesting('True and True')
-    assert check_interesting('False and True')
-    assert check_interesting('False and False')
-    assert check_interesting('True or False')
-    assert check_interesting('True or True')
-    assert check_interesting('False or True')
-    assert check_interesting('False or False')
 
-    with pytest.raises(CannotEval):
-        check_interesting('False or False or False')
+    for length in [2, 3, 4]:
+        for vals in itertools.product(["True", "False"], repeat=length):
+            for op in [" or ", " and "]:
+                source = op.join(vals)
+                print(source)
+                assert check_interesting(source)
 
 
 def test_group_expressions():
