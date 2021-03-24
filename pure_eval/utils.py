@@ -58,6 +58,7 @@ def _is_standard_types_deep(x, check_dict_values: bool, deep: bool):
         Fraction,
         Decimal,
         type(None),
+        object,
     ):
         return True, 0
 

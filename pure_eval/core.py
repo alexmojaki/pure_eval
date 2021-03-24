@@ -1,7 +1,7 @@
 import ast
 import builtins
 import operator
-from collections import ChainMap, OrderedDict
+from collections import ChainMap, OrderedDict, deque
 from contextlib import suppress
 from types import FrameType
 from typing import Any, Tuple, Iterable, List, Mapping, Dict, Union, Set
@@ -14,6 +14,7 @@ from pure_eval.utils import (
     is_standard_types,
     of_standard_types,
     is_any,
+    of_type,
 )
 
 
@@ -104,7 +105,62 @@ class Evaluator:
             return self._handle_boolop(node)
         elif isinstance(node, ast.Compare):
             return self._handle_compare(node)
+        elif isinstance(node, ast.Call):
+            return self._handle_call(node)
+        raise CannotEval
 
+    def _handle_call(self, node):
+        if node.keywords:
+            raise CannotEval
+        func = self[node.func]
+        args = [self[arg] for arg in node.args]
+
+        if (
+            is_any(
+                func,
+                slice,
+                int,
+                range,
+                round,
+                complex,
+                list,
+                tuple,
+                abs,
+                hex,
+                bin,
+                oct,
+                bool,
+                ord,
+                float,
+                len,
+                chr,
+            )
+            or len(args) == 0
+            and is_any(func, set, dict, str, frozenset, bytes, bytearray, object)
+            or len(args) >= 2
+            and is_any(func, str, divmod, bytes, bytearray, pow)
+        ):
+            args = [
+                of_standard_types(arg, check_dict_values=False, deep=False)
+                for arg in args
+            ]
+            return func(*args)
+
+        if len(args) == 1:
+            arg = args[0]
+            if is_any(func, id, type):
+                return func(arg)
+            if is_any(func, all, any, sum):
+                of_type(arg, tuple, frozenset, list, set, dict, OrderedDict, deque)
+                for x in arg:
+                    of_standard_types(x, check_dict_values=False, deep=False)
+                return func(arg)
+
+            if is_any(
+                func, sorted, min, max, hash, set, dict, ascii, str, repr, frozenset
+            ):
+                of_standard_types(arg, check_dict_values=True, deep=True)
+                return func(arg)
         raise CannotEval
 
     def _handle_compare(self, node):

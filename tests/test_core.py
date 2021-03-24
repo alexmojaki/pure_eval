@@ -332,6 +332,68 @@ def test_is():
                     check_interesting(source)
 
 
+def test_calls():
+    # No keywords allowed
+    with pytest.raises(CannotEval):
+        check_interesting("str(b'', encoding='utf8')")
+
+    assert check_interesting("slice(3)")
+    assert check_interesting("slice(3, 5)")
+    assert check_interesting("slice(3, 5, 1)")
+    assert check_interesting("int()")
+    assert check_interesting("int('5')")
+    assert check_interesting("int('55', 12)")
+    assert check_interesting("range(3)")
+    assert check_interesting("range(3, 5)")
+    assert check_interesting("range(3, 5, 1)")
+    assert check_interesting("round(3.14159)")
+    assert check_interesting("round(3.14159, 2)")
+    assert check_interesting("complex()")
+    assert check_interesting("complex(5, 2)")
+    assert check_interesting("list()")
+    assert check_interesting("tuple()")
+    assert check_interesting("dict()")
+    assert check_interesting("bytes()")
+    assert check_interesting("frozenset()")
+    assert check_interesting("bytearray()")
+    assert check_interesting("abs(3)")
+    assert check_interesting("hex(3)")
+    assert check_interesting("bin(3)")
+    assert check_interesting("oct(3)")
+    assert check_interesting("bool(3)")
+    assert check_interesting("chr(3)")
+    assert check_interesting("ord('3')")
+    assert check_interesting("len([CannotEval, len])")
+    assert check_interesting("list([CannotEval, len])")
+    assert check_interesting("tuple([CannotEval, len])")
+    assert check_interesting("str(b'123', 'utf8')")
+    assert check_interesting("bytes('123', 'utf8')")
+    assert check_interesting("bytearray('123', 'utf8')")
+    assert check_interesting("divmod(123, 4)")
+    assert check_interesting("pow(123, 4)")
+    assert check_interesting("id(id)")
+    assert check_interesting("type(id)")
+    assert check_interesting("all([1, 2])")
+    assert check_interesting("any([1, 2])")
+    assert check_interesting("sum([1, 2])")
+    assert check_interesting("sum([len])") is None
+    assert check_interesting("sorted([[1, 2], [3, 4]])")
+    assert check_interesting("min([[1, 2], [3, 4]])")
+    assert check_interesting("max([[1, 2], [3, 4]])")
+    assert check_interesting("hash(((1, 2), (3, 4)))")
+    assert check_interesting("set(((1, 2), (3, 4)))")
+    assert check_interesting("dict(((1, 2), (3, 4)))")
+    assert check_interesting("frozenset(((1, 2), (3, 4)))")
+    assert check_interesting("ascii(((1, 2), (3, 4)))")
+    assert check_interesting("str(((1, 2), (3, 4)))")
+    assert check_interesting("repr(((1, 2), (3, 4)))")
+
+
+def test_unsupported():
+    with pytest.raises(CannotEval):
+        check_interesting("[x for x in []]")
+
+
 def test_group_expressions():
     x = (1, 2)
     evaluator = Evaluator({'x': x})
