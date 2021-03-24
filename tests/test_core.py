@@ -337,6 +337,10 @@ def test_calls():
     with pytest.raises(CannotEval):
         check_interesting("str(b'', encoding='utf8')")
 
+    # This function not allowed
+    with pytest.raises(CannotEval):
+        check_interesting("print(3)")
+
     assert check_interesting("slice(3)")
     assert check_interesting("slice(3, 5)")
     assert check_interesting("slice(3, 5, 1)")
