@@ -37,15 +37,15 @@ class _E(enum.Enum):
 
 
 class _C:
-    def foo(self): pass
+    def foo(self): pass  # pragma: nocover
 
-    def bar(self): pass
+    def bar(self): pass  # pragma: nocover
 
     @classmethod
-    def cm(cls): pass
+    def cm(cls): pass  # pragma: nocover
 
     @staticmethod
-    def sm(): pass
+    def sm(): pass  # pragma: nocover
 
 
 safe_name_samples = {
