@@ -1,16 +1,20 @@
 import ast
 import builtins
 import operator
-from collections import ChainMap
+from collections import ChainMap, OrderedDict
 from contextlib import suppress
-from datetime import date, time, datetime
-from decimal import Decimal
-from fractions import Fraction
 from types import FrameType
 from typing import Any, Tuple, Iterable, List, Mapping, Dict, Union, Set
 
 from pure_eval.my_getattr_static import getattr_static
-from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
+from pure_eval.utils import (
+    CannotEval,
+    has_ast_name,
+    copy_ast_without_context,
+    is_standard_types,
+    of_standard_types,
+    is_any,
+)
 
 
 class Evaluator:
@@ -104,26 +108,12 @@ class Evaluator:
         raise CannotEval
 
     def _handle_compare(self, node):
-        # TODO allow list, tuple, set, frozenset if contents are safe
-        allowed_types = (
-            int,
-            float,
-            complex,
-            bool,
-            str,
-            bytes,
-            date,
-            time,
-            datetime,
-            Fraction,
-            Decimal,
-        )
         # TODO allow is/is not for any types
-        left = of_type(self[node.left], *allowed_types)
+        left = of_standard_types(self[node.left], check_dict_values=False, deep=True)
         result = True
 
         for op, right in zip(node.ops, node.comparators):
-            right = of_type(self[right], *allowed_types)
+            right = of_standard_types(self[right], check_dict_values=False, deep=True)
 
             op_type = type(op)
             op_func = {
@@ -150,36 +140,22 @@ class Evaluator:
         return result
 
     def _handle_boolop(self, node):
-        allowed_types = (
-            int,
-            float,
-            complex,
-            bool,
-            str,
-            bytes,
-            range,
-            list,
-            tuple,
-            dict,
-            set,
-            frozenset,
-            type(None),
-            date,
-            time,
-            datetime,
-            Fraction,
-            Decimal,
+        left = of_standard_types(
+            self[node.values[0]], check_dict_values=False, deep=False
         )
-        left = of_type(self[node.values[0]], *allowed_types)
 
         for right in node.values[1:]:
             # We need short circuiting so that the whole operation can be evaluated
             # even if the right operand can't
             if isinstance(node.op, ast.Or):
-                left = left or of_type(self[right], *allowed_types)
+                left = left or of_standard_types(
+                    self[right], check_dict_values=False, deep=False
+                )
             else:
                 assert isinstance(node.op, ast.And)
-                left = left and of_type(self[right], *allowed_types)
+                left = left and of_standard_types(
+                    self[right], check_dict_values=False, deep=False
+                )
         return left
 
     def _handle_binop(self, node):
@@ -200,58 +176,24 @@ class Evaluator:
         }.get(op_type)
         if not op:
             raise CannotEval
-        # TODO allow dict, set, frozenset, checking for safe hash and ==
-        allowed_types = (
-            int,
-            float,
-            complex,
-            bool,
-            str,
-            bytes,
-            range,
-            list,
-            tuple,
-            date,
-            time,
-            datetime,
-            Fraction,
-            Decimal,
+        left = self[node.left]
+        hash_type = is_any(type(left), set, frozenset, dict, OrderedDict)
+        left = of_standard_types(left, check_dict_values=False, deep=hash_type)
+        formatting = type(left) in (str, bytes) and op_type == ast.Mod
+
+        right = of_standard_types(
+            self[node.right],
+            check_dict_values=formatting,
+            deep=formatting or hash_type,
         )
-        left = of_type(self[node.left], *allowed_types)
-        right = of_type(self[node.right], *allowed_types)
-        if (
-            type(left) in (str, bytes)
-            and op_type == ast.Mod
-            # TODO allow collections containing other types safe to format
-            and type(right) in (list, tuple)
-        ):
-            raise CannotEval
         try:
             return op(left, right)
         except Exception as e:
             raise CannotEval from e
 
     def _handle_unary(self, node: ast.UnaryOp):
-        value = of_type(
-            self[node.operand],
-            int,
-            float,
-            complex,
-            bool,
-            str,
-            list,
-            dict,
-            set,
-            tuple,
-            frozenset,
-            bytes,
-            range,
-            type(None),
-            date,
-            time,
-            datetime,
-            Fraction,
-            Decimal,
+        value = of_standard_types(
+            self[node.operand], check_dict_values=False, deep=False
         )
         op_type = type(node.op)
         op = {
@@ -267,41 +209,28 @@ class Evaluator:
 
     def _handle_subscript(self, node):
         value = self[node.value]
+        of_standard_types(
+            value, check_dict_values=False, deep=is_any(type(value), dict, OrderedDict)
+        )
         index = node.slice
         if isinstance(index, ast.Slice):
-            index = slice(*[
-                None if p is None else of_type(self[p], int, bool)
-                for p in [index.lower, index.upper, index.step]
-            ])
+            index = slice(
+                *[
+                    None if p is None else self[p]
+                    for p in [index.lower, index.upper, index.step]
+                ]
+            )
         elif isinstance(index, ast.ExtSlice):
             raise CannotEval
         else:
             if isinstance(index, ast.Index):
                 index = index.value
             index = self[index]
-
-        if is_any(type(value), list, tuple, str, bytes, bytearray):
-            if isinstance(index, slice):
-                for i in [index.start, index.stop, index.step]:
-                    of_type(i, int, bool, type(None))
-            else:
-                of_type(index, int, bool)
-        else:
-            of_type(value, dict)
-            if not (
-                    safe_hash_key(index)
-
-                    # Have to ensure that the dict only contains keys that
-                    # can safely be compared via __eq__ to the index.
-                    # Don't bother for massive dicts to not kill performance
-                    and len(value) < 10000
-                    and all(map(safe_hash_key, value))
-            ):
-                raise CannotEval
+        of_standard_types(index, check_dict_values=False, deep=True)
 
         try:
             return value[index]
-        except (KeyError, IndexError):
+        except Exception:
             raise CannotEval
 
     def _handle_container(
@@ -320,16 +249,24 @@ class Evaluator:
             return tuple(elts)
 
         # Set and Dict
-        if not all(map(safe_hash_key, elts)):
+        if not all(
+            is_standard_types(elt, check_dict_values=False, deep=True) for elt in elts
+        ):
             raise CannotEval
 
         if isinstance(node, ast.Set):
-            return set(elts)
+            try:
+                return set(elts)
+            except TypeError:
+                raise CannotEval
 
-        return {
-            elt: self[val]
-            for elt, val in zip(elts, node.values)
-        }
+        assert isinstance(node, ast.Dict)
+
+        pairs = [(elt, self[val]) for elt, val in zip(elts, node.values)]
+        try:
+            return dict(pairs)
+        except TypeError:
+            raise CannotEval
 
     def find_expressions(self, root: ast.AST) -> Iterable[Tuple[ast.expr, Any]]:
         """

@@ -139,6 +139,8 @@ def test_eval_dict():
         b, 1, (1, e), 2, e, {(1, e): 2}, (1, b)
     )
 
+    check_eval("{{}: {}}", {})
+
 
 def test_eval_set():
     a = 1
@@ -236,8 +238,8 @@ def test_eval_binary_op():
          'a %s c', b,
     )
     check_eval(
-        "'a %s c' % [], a @ b, a + []",
-         'a %s c', [], a, b,
+        "'a %s c' % check_eval, a @ b, a + []",
+         'a %s c', check_eval, a, b, [],
     )
 
 

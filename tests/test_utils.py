@@ -1,17 +1,23 @@
 import ast
+import inspect
 import io
 import os
 import re
 import sys
+import typing
 from itertools import islice
 
 import pytest
-import typing
 
 from pure_eval import CannotEval
-from pure_eval.utils import copy_ast_without_context, safe_name_types, safe_name_samples, eq_checking_types, safe_name, \
-    typing_annotation_samples
-import inspect
+from pure_eval.utils import (
+    copy_ast_without_context,
+    safe_name_types,
+    safe_name_samples,
+    safe_name,
+    typing_annotation_samples,
+    is_standard_types,
+)
 
 
 def sys_modules_sources():
@@ -79,3 +85,44 @@ def test_safe_name_direct():
     assert safe_name(typing.Union) == "Union"
     assert safe_name(typing.Optional) == "Optional"
     assert safe_name(3) is None
+
+
+def test_is_standard_types():
+    assert is_standard_types(0, check_dict_values=True, deep=True)
+    assert is_standard_types("0", check_dict_values=True, deep=True)
+    assert is_standard_types([0], check_dict_values=True, deep=True)
+    assert is_standard_types({0}, check_dict_values=True, deep=True)
+    assert is_standard_types({0: "0"}, check_dict_values=True, deep=True)
+    assert not is_standard_types(is_standard_types, check_dict_values=True, deep=True)
+    assert not is_standard_types([is_standard_types], check_dict_values=True, deep=True)
+    assert is_standard_types([is_standard_types], check_dict_values=True, deep=False)
+    assert is_standard_types({is_standard_types}, check_dict_values=True, deep=False)
+    assert is_standard_types(
+        {is_standard_types: is_standard_types}, check_dict_values=True, deep=False
+    )
+    assert not is_standard_types(
+        {is_standard_types: is_standard_types}, check_dict_values=True, deep=True
+    )
+    assert not is_standard_types(
+        {0: is_standard_types}, check_dict_values=True, deep=True
+    )
+    assert is_standard_types({0: is_standard_types}, check_dict_values=False, deep=True)
+    assert is_standard_types([[[[[[[{(0,)}]]]]]]], deep=True, check_dict_values=True)
+    assert not is_standard_types(
+        [[[[[[[{(is_standard_types,)}]]]]]]], deep=True, check_dict_values=True
+    )
+
+    lst = []
+    lst.append(lst)
+    assert is_standard_types(lst, deep=False, check_dict_values=True)
+    assert not is_standard_types(lst, deep=True, check_dict_values=True)
+
+    lst = [0] * 1000000
+    assert is_standard_types(lst, deep=False, check_dict_values=True)
+    assert is_standard_types(lst[0], deep=True, check_dict_values=True)
+    assert not is_standard_types(lst, deep=True, check_dict_values=True)
+
+    lst = [[0] * 1000] * 1000
+    assert is_standard_types(lst, deep=False, check_dict_values=True)
+    assert is_standard_types(lst[0], deep=True, check_dict_values=True)
+    assert not is_standard_types(lst, deep=True, check_dict_values=True)
