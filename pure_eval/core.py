@@ -297,11 +297,13 @@ class Evaluator:
             node: Union[ast.List, ast.Tuple, ast.Set, ast.Dict]
     ) -> Union[List, Tuple, Set, Dict]:
         """Handle container nodes, including List, Set, Tuple and Dict"""
-        elts = [
-            self[elt] for elt in (
-                node.keys if isinstance(node, ast.Dict) else node.elts
-            )
-        ]
+        if isinstance(node, ast.Dict):
+            elts = node.keys
+            if None in elts:  # ** unpacking inside {}, not yet supported
+                raise CannotEval
+        else:
+            elts = node.elts
+        elts = [self[elt] for elt in elts]
         if isinstance(node, ast.List):
             return elts
         if isinstance(node, ast.Tuple):

@@ -397,6 +397,15 @@ def test_unsupported():
     with pytest.raises(CannotEval):
         check_interesting("[x for x in []]")
 
+    with pytest.raises(CannotEval):
+        check_interesting("{**{}}")
+
+    with pytest.raises(CannotEval):
+        check_interesting("[*[]]")
+
+    with pytest.raises(CannotEval):
+        check_interesting("int(*[1])")
+
 
 def test_group_expressions():
     x = (1, 2)
