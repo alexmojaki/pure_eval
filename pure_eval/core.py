@@ -1,12 +1,21 @@
 import ast
 import builtins
-from collections import ChainMap
+import operator
+from collections import ChainMap, OrderedDict, deque
 from contextlib import suppress
 from types import FrameType
 from typing import Any, Tuple, Iterable, List, Mapping, Dict, Union, Set
 
 from pure_eval.my_getattr_static import getattr_static
-from pure_eval.utils import CannotEval, is_any, of_type, safe_hash_key, has_ast_name, copy_ast_without_context
+from pure_eval.utils import (
+    CannotEval,
+    has_ast_name,
+    copy_ast_without_context,
+    is_standard_types,
+    of_standard_types,
+    is_any,
+    of_type,
+)
 
 
 class Evaluator:
@@ -80,83 +89,245 @@ class Evaluator:
                 return self.names[node.id]
             except KeyError:
                 raise CannotEval
-
-        if isinstance(node, ast.Attribute):
+        elif isinstance(node, ast.Attribute):
             value = self[node.value]
             attr = node.attr
             return getattr_static(value, attr)
+        elif isinstance(node, ast.Subscript):
+            return self._handle_subscript(node)
+        elif isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
+            return self._handle_container(node)
+        elif isinstance(node, ast.UnaryOp):
+            return self._handle_unary(node)
+        elif isinstance(node, ast.BinOp):
+            return self._handle_binop(node)
+        elif isinstance(node, ast.BoolOp):
+            return self._handle_boolop(node)
+        elif isinstance(node, ast.Compare):
+            return self._handle_compare(node)
+        elif isinstance(node, ast.Call):
+            return self._handle_call(node)
+        raise CannotEval
 
-        if isinstance(node, ast.Subscript):
-            value = self[node.value]
-            index = node.slice
-            if isinstance(index, ast.Slice):
-                index = slice(*[
-                    None if p is None else of_type(self[p], int, bool)
-                    for p in [index.lower, index.upper, index.step]
-                ])
-            elif isinstance(index, ast.ExtSlice):
-                raise CannotEval
-            else:
-                if isinstance(index, ast.Index):
-                    index = index.value
-                index = self[index]
+    def _handle_call(self, node):
+        if node.keywords:
+            raise CannotEval
+        func = self[node.func]
+        args = [self[arg] for arg in node.args]
 
-            if is_any(type(value), list, tuple, str, bytes, bytearray):
-                if isinstance(index, slice):
-                    for i in [index.start, index.stop, index.step]:
-                        of_type(i, int, bool, type(None))
-                else:
-                    of_type(index, int, bool)
-            else:
-                of_type(value, dict)
-                if not (
-                        safe_hash_key(index)
+        if (
+            is_any(
+                func,
+                slice,
+                int,
+                range,
+                round,
+                complex,
+                list,
+                tuple,
+                abs,
+                hex,
+                bin,
+                oct,
+                bool,
+                ord,
+                float,
+                len,
+                chr,
+            )
+            or len(args) == 0
+            and is_any(func, set, dict, str, frozenset, bytes, bytearray, object)
+            or len(args) >= 2
+            and is_any(func, str, divmod, bytes, bytearray, pow)
+        ):
+            args = [
+                of_standard_types(arg, check_dict_values=False, deep=False)
+                for arg in args
+            ]
+            return func(*args)
 
-                        # Have to ensure that the dict only contains keys that
-                        # can safely be compared via __eq__ to the index.
-                        # Don't bother for massive dicts to not kill performance
-                        and len(value) < 10000
-                        and all(map(safe_hash_key, value))
-                ):
-                    raise CannotEval
+        if len(args) == 1:
+            arg = args[0]
+            if is_any(func, id, type):
+                return func(arg)
+            if is_any(func, all, any, sum):
+                of_type(arg, tuple, frozenset, list, set, dict, OrderedDict, deque)
+                for x in arg:
+                    of_standard_types(x, check_dict_values=False, deep=False)
+                return func(arg)
+
+            if is_any(
+                func, sorted, min, max, hash, set, dict, ascii, str, repr, frozenset
+            ):
+                of_standard_types(arg, check_dict_values=True, deep=True)
+                return func(arg)
+        raise CannotEval
+
+    def _handle_compare(self, node):
+        left = self[node.left]
+        result = True
+
+        for op, right in zip(node.ops, node.comparators):
+            right = self[right]
+
+            op_type = type(op)
+            op_func = {
+                ast.Eq: operator.eq,
+                ast.NotEq: operator.ne,
+                ast.Lt: operator.lt,
+                ast.LtE: operator.le,
+                ast.Gt: operator.gt,
+                ast.GtE: operator.ge,
+                ast.Is: operator.is_,
+                ast.IsNot: operator.is_not,
+                ast.In: (lambda a, b: a in b),
+                ast.NotIn: (lambda a, b: a not in b),
+            }[op_type]
+
+            if op_type not in (ast.Is, ast.IsNot):
+                of_standard_types(left, check_dict_values=False, deep=True)
+                of_standard_types(right, check_dict_values=False, deep=True)
 
             try:
-                return value[index]
-            except (KeyError, IndexError):
-                raise CannotEval
+                result = op_func(left, right)
+            except Exception as e:
+                raise CannotEval from e
+            if not result:
+                return result
+            left = right
 
+        return result
 
-        if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
-            return self._handle_container(node)
+    def _handle_boolop(self, node):
+        left = of_standard_types(
+            self[node.values[0]], check_dict_values=False, deep=False
+        )
 
-        raise CannotEval
+        for right in node.values[1:]:
+            # We need short circuiting so that the whole operation can be evaluated
+            # even if the right operand can't
+            if isinstance(node.op, ast.Or):
+                left = left or of_standard_types(
+                    self[right], check_dict_values=False, deep=False
+                )
+            else:
+                assert isinstance(node.op, ast.And)
+                left = left and of_standard_types(
+                    self[right], check_dict_values=False, deep=False
+                )
+        return left
+
+    def _handle_binop(self, node):
+        op_type = type(node.op)
+        op = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+            ast.LShift: operator.lshift,
+            ast.RShift: operator.rshift,
+            ast.BitOr: operator.or_,
+            ast.BitXor: operator.xor,
+            ast.BitAnd: operator.and_,
+        }.get(op_type)
+        if not op:
+            raise CannotEval
+        left = self[node.left]
+        hash_type = is_any(type(left), set, frozenset, dict, OrderedDict)
+        left = of_standard_types(left, check_dict_values=False, deep=hash_type)
+        formatting = type(left) in (str, bytes) and op_type == ast.Mod
+
+        right = of_standard_types(
+            self[node.right],
+            check_dict_values=formatting,
+            deep=formatting or hash_type,
+        )
+        try:
+            return op(left, right)
+        except Exception as e:
+            raise CannotEval from e
+
+    def _handle_unary(self, node: ast.UnaryOp):
+        value = of_standard_types(
+            self[node.operand], check_dict_values=False, deep=False
+        )
+        op_type = type(node.op)
+        op = {
+            ast.USub: operator.neg,
+            ast.UAdd: operator.pos,
+            ast.Not: operator.not_,
+            ast.Invert: operator.invert,
+        }[op_type]
+        try:
+            return op(value)
+        except Exception as e:
+            raise CannotEval from e
+
+    def _handle_subscript(self, node):
+        value = self[node.value]
+        of_standard_types(
+            value, check_dict_values=False, deep=is_any(type(value), dict, OrderedDict)
+        )
+        index = node.slice
+        if isinstance(index, ast.Slice):
+            index = slice(
+                *[
+                    None if p is None else self[p]
+                    for p in [index.lower, index.upper, index.step]
+                ]
+            )
+        elif isinstance(index, ast.ExtSlice):
+            raise CannotEval
+        else:
+            if isinstance(index, ast.Index):
+                index = index.value
+            index = self[index]
+        of_standard_types(index, check_dict_values=False, deep=True)
+
+        try:
+            return value[index]
+        except Exception:
+            raise CannotEval
 
     def _handle_container(
             self,
             node: Union[ast.List, ast.Tuple, ast.Set, ast.Dict]
     ) -> Union[List, Tuple, Set, Dict]:
         """Handle container nodes, including List, Set, Tuple and Dict"""
-        elts = [
-            self[elt] for elt in (
-                node.keys if isinstance(node, ast.Dict) else node.elts
-            )
-        ]
+        if isinstance(node, ast.Dict):
+            elts = node.keys
+            if None in elts:  # ** unpacking inside {}, not yet supported
+                raise CannotEval
+        else:
+            elts = node.elts
+        elts = [self[elt] for elt in elts]
         if isinstance(node, ast.List):
             return elts
         if isinstance(node, ast.Tuple):
             return tuple(elts)
 
         # Set and Dict
-        if not all(map(safe_hash_key, elts)):
+        if not all(
+            is_standard_types(elt, check_dict_values=False, deep=True) for elt in elts
+        ):
             raise CannotEval
 
         if isinstance(node, ast.Set):
-            return set(elts)
+            try:
+                return set(elts)
+            except TypeError:
+                raise CannotEval
 
-        return {
-            elt: self[val]
-            for elt, val in zip(elts, node.values)
-        }
+        assert isinstance(node, ast.Dict)
+
+        pairs = [(elt, self[val]) for elt, val in zip(elts, node.values)]
+        try:
+            return dict(pairs)
+        except TypeError:
+            raise CannotEval
 
     def find_expressions(self, root: ast.AST) -> Iterable[Tuple[ast.expr, Any]]:
         """
