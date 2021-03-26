@@ -144,23 +144,35 @@ class Evaluator:
                 of_standard_types(arg, check_dict_values=False, deep=False)
                 for arg in args
             ]
-            return func(*args)
+            try:
+                return func(*args)
+            except Exception as e:
+                raise CannotEval from e
 
         if len(args) == 1:
             arg = args[0]
             if is_any(func, id, type):
-                return func(arg)
+                try:
+                    return func(arg)
+                except Exception as e:
+                    raise CannotEval from e
             if is_any(func, all, any, sum):
                 of_type(arg, tuple, frozenset, list, set, dict, OrderedDict, deque)
                 for x in arg:
                     of_standard_types(x, check_dict_values=False, deep=False)
-                return func(arg)
+                try:
+                    return func(arg)
+                except Exception as e:
+                    raise CannotEval from e
 
             if is_any(
                 func, sorted, min, max, hash, set, dict, ascii, str, repr, frozenset
             ):
                 of_standard_types(arg, check_dict_values=True, deep=True)
-                return func(arg)
+                try:
+                    return func(arg)
+                except Exception as e:
+                    raise CannotEval from e
         raise CannotEval
 
     def _handle_compare(self, node):
