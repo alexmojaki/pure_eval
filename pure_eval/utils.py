@@ -189,3 +189,13 @@ def copy_ast_without_context(x):
         return list(map(copy_ast_without_context, x))
     else:
         return x
+
+
+def ensure_dict(x):
+    """
+    Handles invalid non-dict inputs
+    """
+    try:
+        return dict(x)
+    except Exception:
+        return {}

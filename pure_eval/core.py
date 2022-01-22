@@ -15,6 +15,7 @@ from pure_eval.utils import (
     of_standard_types,
     is_any,
     of_type,
+    ensure_dict,
 )
 
 
@@ -39,9 +40,9 @@ class Evaluator:
         """
 
         return cls(ChainMap(
-            frame.f_locals,
-            frame.f_globals,
-            frame.f_builtins,
+            ensure_dict(frame.f_locals),
+            ensure_dict(frame.f_globals),
+            ensure_dict(frame.f_builtins),
         ))
 
     def __getitem__(self, node: ast.expr) -> Any:

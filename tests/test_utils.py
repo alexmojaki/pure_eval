@@ -17,6 +17,7 @@ from pure_eval.utils import (
     safe_name,
     typing_annotation_samples,
     is_standard_types,
+    ensure_dict,
 )
 
 
@@ -126,3 +127,10 @@ def test_is_standard_types():
     assert is_standard_types(lst, deep=False, check_dict_values=True)
     assert is_standard_types(lst[0], deep=True, check_dict_values=True)
     assert not is_standard_types(lst, deep=True, check_dict_values=True)
+
+
+def test_ensure_dict():
+    assert ensure_dict({}) == {}
+    assert ensure_dict([]) == {}
+    assert ensure_dict('foo') == {}
+    assert ensure_dict({'a': 1}) == {'a': 1}
