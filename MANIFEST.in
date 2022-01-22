@@ -1,2 +1,3 @@
 include LICENSE.txt
 include pure_eval/py.typed
+include README.md
