@@ -187,6 +187,10 @@ class TestGetattrStatic(unittest.TestCase):
         descriptor.__set__ = lambda s, i, v: None
         self.assert_cannot_getattr(foo, 'd')
 
+        del descriptor.__set__
+        descriptor.__delete__ = lambda s, i, o: None
+        self.assert_cannot_getattr(foo, 'd')
+
     def test_metaclass_with_descriptor(self):
         class descriptor(object):
             def __get__(self, instance, owner):
