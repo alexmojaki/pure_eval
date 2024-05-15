@@ -58,7 +58,16 @@ def check_copy_ast_without_context(tree):
     dump1 = ast.dump(tree)
     dump2 = ast.dump(tree2)
     normalised_dump1 = re.sub(
-        r", ctx=(Load|Store|Del)\(\)",
+        # Two possible matches:
+        # - first one like ", ctx=…" where ", " should be removed
+        # - second one like "(ctx=…" where "(" should be kept
+        (
+            r"("
+                r", ctx=(Load|Store|Del)\(\)"
+            r"|"
+                r"(?<=\()ctx=(Load|Store|Del)\(\)"
+            r")"
+        ),
         "",
         dump1
     )
