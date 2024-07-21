@@ -458,12 +458,12 @@ def test_evaluator_wrong_getitem():
         str(evaluator["foo"])
 
 
-@pytest.mark.parametrize("expr", ["[1][:,:]", "[1][9]"])
+@pytest.mark.parametrize("expr", ["lst[:,:]", "lst[9]"])
 def test_cannot_subscript(expr):
     with pytest.raises(Exception):
         eval(expr)
 
-    evaluator = Evaluator({})
+    evaluator = Evaluator({'lst': [1]})
     tree = ast.parse(expr)
     node = tree.body[0].value
     assert isinstance(node, ast.Subscript)
