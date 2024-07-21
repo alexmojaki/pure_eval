@@ -13,4 +13,5 @@ __all__ = [
     "group_expressions",
     "is_expression_interesting",
     "getattr_static",
+    "__version__",
 ]
