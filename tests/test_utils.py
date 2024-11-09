@@ -33,7 +33,7 @@ def sys_modules_sources():
 
         filename = os.path.abspath(filename)
         try:
-            with io.open(filename) as f:
+            with open(filename) as f:
                 source = f.read()
         except OSError:
             continue

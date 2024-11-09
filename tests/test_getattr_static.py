@@ -20,7 +20,7 @@ class TestGetattrStatic(unittest.TestCase):
             getattr_static(thing, attr)
 
     def test_basic(self):
-        class Thing(object):
+        class Thing:
             x = object()
 
         thing = Thing()
@@ -28,7 +28,7 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_cannot_getattr(thing, 'y')
 
     def test_inherited(self):
-        class Thing(object):
+        class Thing:
             x = object()
 
         class OtherThing(Thing):
@@ -38,7 +38,7 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_getattr(something, 'x')
 
     def test_instance_attr(self):
-        class Thing(object):
+        class Thing:
             x = 2
 
             def __init__(self, x):
@@ -51,7 +51,7 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_getattr(thing, 'x')
 
     def test_property(self):
-        class Thing(object):
+        class Thing:
             @property
             def x(self):
                 raise AttributeError("I'm pretending not to exist")
@@ -64,13 +64,13 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_cannot_getattr(Thing, 'x')
 
     def test_descriptor_raises_AttributeError(self):
-        class descriptor(object):
+        class descriptor:
             def __get__(*_):
                 raise AttributeError("I'm pretending not to exist")
 
         desc = descriptor()
 
-        class Thing(object):
+        class Thing:
             x = desc
 
         thing = Thing()
@@ -78,13 +78,13 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_cannot_getattr(Thing, 'x')
 
     def test_classAttribute(self):
-        class Thing(object):
+        class Thing:
             x = object()
 
         self.assert_getattr(Thing, 'x')
 
     def test_classVirtualAttribute(self):
-        class Thing(object):
+        class Thing:
             @types.DynamicClassAttribute
             def x(self):
                 return self._x
@@ -95,7 +95,7 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_cannot_getattr(Thing, 'x')
 
     def test_inherited_classattribute(self):
-        class Thing(object):
+        class Thing:
             x = object()
 
         class OtherThing(Thing):
@@ -104,7 +104,7 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_getattr(OtherThing, 'x')
 
     def test_slots(self):
-        class Thing(object):
+        class Thing:
             y = 'bar'
             __slots__ = ['x']
 
@@ -124,7 +124,7 @@ class TestGetattrStatic(unittest.TestCase):
         class meta(type):
             attr = 'foo'
 
-        class Thing(object, metaclass=meta):
+        class Thing(metaclass=meta):
             pass
 
         self.assert_getattr(Thing, 'attr')
@@ -137,7 +137,7 @@ class TestGetattrStatic(unittest.TestCase):
         class sub(meta):
             pass
 
-        class OtherThing(object, metaclass=sub):
+        class OtherThing(metaclass=sub):
             x = 3
 
         self.assert_getattr(OtherThing, 'attr')
@@ -158,7 +158,7 @@ class TestGetattrStatic(unittest.TestCase):
             self.assert_cannot_getattr(handle, 'name')
 
     def test_inherited_slots(self):
-        class Thing(object):
+        class Thing:
             __slots__ = ['x']
 
             def __init__(self):
@@ -170,11 +170,11 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_getattr(OtherThing(), 'x')
 
     def test_descriptor(self):
-        class descriptor(object):
+        class descriptor:
             def __get__(self, instance, owner):
                 return 3
 
-        class Foo(object):
+        class Foo:
             d = descriptor()
 
         foo = Foo()
@@ -192,20 +192,20 @@ class TestGetattrStatic(unittest.TestCase):
         self.assert_cannot_getattr(foo, 'd')
 
     def test_metaclass_with_descriptor(self):
-        class descriptor(object):
+        class descriptor:
             def __get__(self, instance, owner):
                 return 3
 
         class meta(type):
             d = descriptor()
 
-        class Thing(object, metaclass=meta):
+        class Thing(metaclass=meta):
             pass
 
         self.assert_cannot_getattr(Thing, 'd')
 
     def test_class_as_property(self):
-        class Base(object):
+        class Base:
             foo = 3
 
         class Something(Base):
@@ -223,7 +223,7 @@ class TestGetattrStatic(unittest.TestCase):
             def __mro__(self):
                 return 1 / 0
 
-        class Base(object):
+        class Base:
             foo = 3
 
         class Something(Base, metaclass=Meta):
@@ -252,7 +252,7 @@ class TestGetattrStatic(unittest.TestCase):
 
             __getitem__ = get
 
-        class Foo(object):
+        class Foo:
             a = 3
 
         foo = Foo()

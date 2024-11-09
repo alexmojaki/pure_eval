@@ -412,11 +412,11 @@ def test_group_expressions():
     evaluator = Evaluator({'x': x})
     tree = ast.parse('x[0] + x[x[0]]').body[0].value
     expressions = evaluator.find_expressions(tree)
-    grouped = set(
+    grouped = {
         (frozenset(nodes), value)
         for nodes, value in
         group_expressions(expressions)
-    )
+    }
     expected = {
         (frozenset([tree.left, subscript_item(tree.right)]),
          x[0]),
@@ -431,16 +431,16 @@ def test_group_expressions():
     }
     assert grouped == expected
 
-    grouped = set(
+    grouped = {
         (frozenset(nodes), value)
         for nodes, value in
         evaluator.interesting_expressions_grouped(tree)
-    )
-    expected = set(
+    }
+    expected = {
         (nodes, value)
         for nodes, value in expected
         if value != 0
-    )
+    }
     assert grouped == expected
 
 
