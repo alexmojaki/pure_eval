@@ -1,6 +1,5 @@
 import ast
 import inspect
-import io
 import os
 import re
 import sys
