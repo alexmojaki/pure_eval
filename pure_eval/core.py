@@ -56,7 +56,7 @@ class Evaluator:
         """
 
         if not isinstance(node, ast.expr):
-            raise TypeError("node should be an ast.expr, not {!r}".format(type(node).__name__))
+            raise TypeError(f"node should be an ast.expr, not {type(node).__name__!r}")
 
         with suppress(KeyError):
             result = self._cache[node]
