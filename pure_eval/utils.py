@@ -1,5 +1,5 @@
 from collections import OrderedDict, deque
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timedelta, timezone
 from decimal import Decimal
 from fractions import Fraction
 import ast
@@ -44,6 +44,16 @@ def is_standard_types(x, *, check_dict_values: bool, deep: bool):
 
 def _is_standard_types_deep(x, check_dict_values: bool, deep: bool):
     typ = type(x)
+    if is_any(typ, datetime, time):
+        tz = x.tzinfo
+        if tz is None:
+            return True, 0
+        # Builtin time zones can retain subclassed names or offsets.
+        return (
+            type(tz) is timezone
+            and type(tz.tzname(None)) is str
+            and type(tz.utcoffset(None)) is timedelta
+        ), 0
     if is_any(
         typ,
         str,
@@ -53,8 +63,6 @@ def _is_standard_types_deep(x, check_dict_values: bool, deep: bool):
         bytes,
         complex,
         date,
-        time,
-        datetime,
         Fraction,
         Decimal,
         type(None),
