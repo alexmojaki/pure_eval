@@ -4,6 +4,12 @@
 
 This is a Python package that lets you safely evaluate certain AST nodes without triggering arbitrary code that may have unwanted side effects.
 
+Datetime and time operations are evaluated only for naive values and values using the built-in
+`datetime.timezone` with ordinary string names and timedelta offsets. Custom time zones or
+subclassed names and offsets can invoke user code during formatting, hashing or comparison,
+so operations on those values are conservatively refused. Looking up the value by name and
+identity comparisons remain supported.
+
 It can be installed from PyPI:
 
     pip install pure_eval

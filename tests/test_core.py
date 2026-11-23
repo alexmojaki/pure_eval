@@ -1,4 +1,5 @@
 import ast
+import datetime
 import inspect
 import sys
 import typing
@@ -469,3 +470,68 @@ def test_cannot_subscript(expr):
     assert isinstance(node, ast.Subscript)
     with pytest.raises(CannotEval):
         str(evaluator[node])
+
+@pytest.mark.parametrize("kind", ["datetime", "time"])
+@pytest.mark.parametrize("expression", ["repr(value)", "str(value)", "hash(value)", "value == other", "{value: 1}", "repr([value])"])
+def test_custom_timezone_callbacks_are_not_evaluated(kind, expression):
+    calls = []
+
+    class RecordingZone(datetime.tzinfo):
+        def utcoffset(self, value):
+            calls.append("utcoffset")
+            return datetime.timedelta(0)
+
+        def __repr__(self):
+            calls.append("repr")
+            return "RecordingZone()"
+
+    factory = datetime.datetime if kind == "datetime" else datetime.time
+    args = (2026, 1, 1) if kind == "datetime" else (12, 0)
+    value = factory(*args, tzinfo=RecordingZone())
+    other = factory(*args, tzinfo=datetime.timezone.utc)
+    names = {"value": value, "other": other, "repr": repr, "str": str, "hash": hash}
+    evaluator = Evaluator(names)
+    node = ast.parse(expression, mode="eval").body
+
+    with pytest.raises(CannotEval):
+        evaluator[node]
+    assert calls == []
+
+
+@pytest.mark.parametrize("kind", ["datetime", "time"])
+@pytest.mark.parametrize("tz", [None, datetime.timezone.utc, datetime.timezone(datetime.timedelta(hours=2), "fixed")])
+def test_builtin_timezones_remain_evaluable(kind, tz):
+    factory = datetime.datetime if kind == "datetime" else datetime.time
+    args = (2026, 1, 1) if kind == "datetime" else (12, 0)
+    value = factory(*args, tzinfo=tz)
+    names = {"value": value, "repr": repr, "str": str, "hash": hash}
+    for expression in ("repr(value)", "str(value)", "hash(value)", "value == value", "{value: 1}"):
+        assert Evaluator(names)[ast.parse(expression, mode="eval").body] == eval(expression, names)
+
+
+@pytest.mark.parametrize("kind", ["datetime", "time"])
+@pytest.mark.parametrize("component", ["name", "offset"])
+def test_builtin_timezone_with_custom_component_is_not_evaluated(kind, component):
+    calls = []
+
+    class RecordingName(str):
+        def __repr__(self):
+            calls.append("repr")
+            return super().__repr__()
+
+    class RecordingOffset(datetime.timedelta):
+        def __repr__(self):
+            calls.append("repr")
+            return super().__repr__()
+
+    if component == "name":
+        tz = datetime.timezone(datetime.timedelta(0), RecordingName("custom"))
+    else:
+        tz = datetime.timezone(RecordingOffset(hours=2))
+    factory = datetime.datetime if kind == "datetime" else datetime.time
+    args = (2026, 1, 1) if kind == "datetime" else (12, 0)
+    value = factory(*args, tzinfo=tz)
+    node = ast.parse("repr(value)", mode="eval").body
+    with pytest.raises(CannotEval):
+        Evaluator({"value": value, "repr": repr})[node]
+    assert calls == []
